@@ -218,8 +218,6 @@ int main(int argc, char* argv[])
             }
         }
 
-        return 0;
-
         Vector<Real> amu(M);
 
         // Compute the reaction initial conditions
