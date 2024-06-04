@@ -14,7 +14,6 @@ using namespace amrex;
 void SerialReactionLoop(Vector<Vector<Vector<Real>>>& ResultTensor, Vector<long> ReactantQuantity, Vector<Real> amu, Real a0, const Vector<Vector<int>>& Reactions, const Vector<Real>& ReactionRates, const Real Volume, Real save_point, const Real runtime, const Real save_step, unsigned int init_seed, long i_max, size_t start, size_t end) {
 
     for (size_t i = start; i < end; i++ ) {
-        // if (i % modulator == 0) {Print() << "Iteration " << i << std::endl; };
         ReactionLoop (ResultTensor[i], ReactantQuantity, amu, a0, Reactions, ReactionRates, Volume, save_point, runtime, save_step, init_seed + i, i_max);
     }
 }
@@ -44,19 +43,17 @@ void ParallelReactionLoop(Vector<Vector<Vector<Real>>>& ResultTensor, Vector<lon
 
 
 void ReactionLoop (Vector<Vector<Real>>& ResultMatrix, Vector<long> ReactantQuantity, Vector<Real> amu, Real a0, const Vector<Vector<int>>& Reactions, const Vector<Real>& ReactionRates, const Real Volume, Real save_point, const Real runtime, const Real save_step, unsigned int init_seed, long i_max) {
-
-    // Vector<std::string> ReactantNames;
+    
+    // Random number generator
     std::seed_seq seed{init_seed, init_seed, init_seed, init_seed};
-    // std::size_t seed_2 = size_t(init_seed) << 32 + size_t(init_seed);
     std::mt19937_64 generator (seed);
     std::uniform_real_distribution<Real> distribution (0,1);
 
     // System contains N reacting spicies and M Reaction Paths
     int N = ReactantQuantity.size();
-    // int M = Reactions.size();
-
     Vector<Real> ResultVector(N+2, 0);
 
+    // Initialize the Reaction
     int ii = 0;
     int k = 0;
     Real t = 0;
@@ -110,7 +107,6 @@ void ReactionLoop (Vector<Vector<Real>>& ResultMatrix, Vector<long> ReactantQuan
         }
     }
     // Post-simlation save
-    // Print() << "Simulation completed successfully in " << ii << " steps!" << std::endl;
     while (runtime >= save_point) {
             k++;
             Real lerpt = (save_point - t + tau) / tau;
@@ -125,6 +121,4 @@ void ReactionLoop (Vector<Vector<Real>>& ResultMatrix, Vector<long> ReactantQuan
             save_point *= save_step; // account for large periods of inactivity
             
         }
-
-    // Print() << "Simulation completed successfully in " << i << " steps!" << std::endl;
 }

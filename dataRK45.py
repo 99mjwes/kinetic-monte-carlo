@@ -16,8 +16,6 @@ import os
 script_dir = os.path.dirname(os.path.abspath(__file__))
 os.chdir(script_dir)
 
-
-
 data = pd.read_csv("results.csv", delimiter=',', header=0)
 inputdata = pd.read_csv("kinetic_test_5.csv", delimiter=';', header=1)
 inputdata = inputdata.apply(pd.to_numeric, errors='coerce')
@@ -87,11 +85,6 @@ coeffs = coeffs[6:-1]
 
 assert len(coeffs) == reaction_factor.shape[0], f"Number of coefficients ({len(coeffs)}) does not match the number of reactions ({reaction_factor.shape[0]})"
 
-
-# for i in range(Rn):
-#     print(f"Species conc {i+1}: {init_conc[i]:0.4e}")
-
-
 print(f"Assuming that the system is at {T} K and {P} Pa")
 R0 = 8.314 # J/(mol K)
 avogadros_number = 6.02214076e23
@@ -99,11 +92,7 @@ avogadros_number = 6.02214076e23
 
 nn = np.sum(init_conc)
 
-# V = 1e6 * nn * R0 * T / (P * avogadros_number)
 print(f"V = {V}")
-# V = 4.141757959e-13
-# A , B, C = ABC[:,0], ABC[:,1], ABC[:,2]
-# coeffs = A * exp(C/T) * np.power((T/300),B)
 
 Rm = len(coeffs)
 
@@ -167,14 +156,6 @@ print(res_values[-1])
 N = 1/N
 norm_R = N[:,np.newaxis] * R    # Normalized species concentration
 
-# mass = np.sum(np.array([1,2,3,1.5], np.newaxis) * res_values, axis=0)
-# diff_mass = np.diff(mass)
-# cc_mass = np.sum(diff_mass)
-# mc_mass = np.max(np.abs(diff_mass))
-# print(f"Cummulative mass conservation error: {cc_mass:0.4e}")
-# print(f"Max single mass conservation error: {mc_mass:0.4e}")
-
-
 fig, ax = plt.subplots(1, 2, figsize=(32, 16))
 
 ax[0].set_title("Species Concentration")
@@ -183,10 +164,6 @@ H = ax[0].loglog(t_values, res_values, lw=3, ls='--')
 ax[0].set_xlabel("Time [s]")
 ax[0].set_xlim([1e-4,1e0])
 ax[0].set_ylim([1e-5,1.1e0])
-# for i in range(len(ReactantNames)):
-#     K[i].set_label(ReactantNames[i])
-    # H[i].set_label(ReactantNames[i])
-
 
 ax[0].legend([(K[i], H[i]) for i in range(len(ReactantNames))], list(ReactantNames),
               handler_map={tuple: HandlerTuple(ndivide=None)})
@@ -196,7 +173,6 @@ for i, axes in enumerate(K):
 
 
 ax[0].set_ylabel("Relative Concentration")
-# ax[0].legend()
 ax[0].grid()
 
 

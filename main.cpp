@@ -14,8 +14,6 @@
 
 using namespace amrex;
 
-// template <class T>
-
 void ReactionPrint(const Vector<int>& reaction, const Vector<std::string>& ReactantNames, Real ReactionRate) {
 
     int M = reaction.size();
@@ -115,15 +113,13 @@ int main(int argc, char* argv[])
 
         int errorlevel = LoadData(filename,  ReactantNames,  ReactantQuantity,  Reactions, ReactionRateExecutors, ReactionRateParsers);
         Real Ee = E < 65 ? 2.31*E : 3* std::pow(E/65, 2.6) /(1 + std::pow(E/65,2));
-        // Real Ee = 1;
         Real TeEN = 2 * Ee / 3;
         Real Te = T + TeEN;
-        // Real Te = T;
         Print() << "Electron Temperature: " << Te << std::endl;
+
         // Overwrite the reaction rates with the parsed values
         for (int i = 0; i < ReactionRateExecutors.size(); i++) {
             ReactionRates.push_back(ReactionRateExecutors[i](T,E,Te,ne*1e-6));
-            // ReactionRates[i] = ReactionRateExecutors[i](T,E);
         }
 
         if (errorlevel != 0) {
@@ -132,22 +128,17 @@ int main(int argc, char* argv[])
         }
 
         // Simulation definitions
-        // ReactantNames = {"O", "O2"};            // Vector of size N
-
         long n = std::accumulate(ReactantQuantity.begin(), ReactantQuantity.end(), long(0));
         if (n == 0) {            
             Print() << "Error: Total Reactant Quantity is zero!" << std::endl;
-            // Print() << "Exit return code: " << errorlevel << std::endl;
             return 6;
         }
 
 
         Print() << "Reactants: ";
         VectorPrint(ReactantNames);
-        // ReactantQuantity = {int(1e7), int(1e2)};       // Vector of size N
         Print() << "Quantity: ";
         VectorPrint(ReactantQuantity);
-        // Reactions = {{2,1,0,2},{0,1,0,1}};      // Matrix of size M x 2N
 
         for (int i = 0; i < Reactions.size(); i++) {
             Print() << "Reaction R" << i + 1 << ": ";
@@ -221,9 +212,7 @@ int main(int argc, char* argv[])
         Vector<Real> amu(M);
 
         // Compute the reaction initial conditions
-        // Real t = 0.0;
         Real a0 = 1.0;
-        // Real r1, r2, tau, mu;
         Compute_Reaction_Schema( amu, a0, Volume, ReactantQuantity, Reactions, ReactionRates);
         Print() << "a0 initial: " << a0 << std::endl;
 
@@ -251,8 +240,6 @@ int main(int argc, char* argv[])
             seed = device();
             Print() << "Seed: " << seed << std::endl;}
 
-
-        // int ii = 0;
         for (int i = 0; i < niter; i++) {
 
             // Preload the tensor with the initial conditions
@@ -295,7 +282,6 @@ int main(int argc, char* argv[])
         Print() << "Writing results to file" << std::endl;
         Real stave; 
         for (int i = 0; i < n_saves + 2; i++) {
-            // Print() << "Writing save " << i << " to file" << std::endl;
             stave = (i) ? first_save : 0.0;
             results << i << "," << stave << "," << OutputMatrix[i][0] << "," << OutputMatrix[i][1];
             errors << std::sqrt(ErrorMatrix[i][0]) << "," << std::sqrt(ErrorMatrix[i][1]);

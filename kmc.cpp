@@ -50,29 +50,22 @@ void Compute_Reaction_Schema( Vector<Real>& ReactionSchema, Real& SchemaSum, con
 
    
     for (int i = 0; i < M; i++) {
-        // reaction = Reactions[i];
         std::copy(Reactions[i].begin(), Reactions[i].end() - N, reaction.begin());
-        // VectorPrint(reaction);
         tracker = 1;
 
         Reactant_sum = std::accumulate(reaction.begin(), reaction.end() , long(0));
-        AMREX_ASSERT_WITH_MESSAGE(Reactant_sum == Reactant_sum, "ERROR: NaN Reactant sum"); //: i=" << i << " - Reactant_sum=" << Reactant_sum << std::endl;}
+        AMREX_ASSERT_WITH_MESSAGE(Reactant_sum == Reactant_sum, "ERROR: NaN Reactant sum"); 
 
         for (int j = 0; j < N; j++) {
-            // if (ii > 48000) {Print() << tracker << " ";}
             tracker *= power(ReactantQuantity[j], reaction[j]);
-            AMREX_ASSERT_WITH_MESSAGE(tracker == tracker, "ERROR: NaN Tracker"); //: j=" << j << " - Reactant=" << ReactantQuantity[j] << " - Power=" << power(ReactantQuantity[j], reaction[j]) << std::endl;}
-        }
-        // if (ii > 48000) {Print() << " - Survived tracker!!" << std::endl;}
+            AMREX_ASSERT_WITH_MESSAGE(tracker == tracker, "ERROR: NaN Tracker");
 
         BaseSchema[i] = tracker * ReactionRates[i] * std::pow(Volume, 1 - Reactant_sum);
-        AMREX_ASSERT_WITH_MESSAGE(BaseSchema[i] == BaseSchema[i], "ERROR: NaN Base Schema"); //: i=" << i << "- Local Schema=" << tracker << " - RR=" << ReactionRates[i] << " - RS=" << Reactant_sum << " - Power=" << std::pow(Volume, 1 - Reactant_sum));
-        // Print() << "Base Schema: " << BaseSchema[i] << " - Tracker: " << tracker << " - RR: " << ReactionRates[i] << " - RS: " << Reactant_sum <<  std::endl;
+        AMREX_ASSERT_WITH_MESSAGE(BaseSchema[i] == BaseSchema[i], "ERROR: NaN Base Schema");
     }
 
     std::partial_sum(BaseSchema.begin(), BaseSchema.end(), CummulativeSchema.begin());
     SchemaSum = std::accumulate(BaseSchema.begin(), BaseSchema.end(), Real(0.0));
-    // Print() << "Schema Sum: " << SchemaSum << std::endl;
 
     ssinv = 1/SchemaSum; // Inverse Schema Sum
 
@@ -82,7 +75,6 @@ void Compute_Reaction_Schema( Vector<Real>& ReactionSchema, Real& SchemaSum, con
 
     if (std::abs(ReactionSchema[M - 1] - Real(1.0)) < 1e-15) {ReactionSchema[M - 1] = 1.0;}
 
-    // Print() << "ReactionSchema: " << bool(Real(ReactionSchema[M - 1]) == Real(1.0)) <<  " - with diff: " << ReactionSchema[M - 1] - Real(1.0) << std::endl;
     AMREX_ASSERT_WITH_MESSAGE(Real(ReactionSchema[M - 1]) == Real(1.0), "Cummulative Density Function is not proper!!");
 }
 
@@ -135,7 +127,6 @@ int LoadData(std::string filename, Vector<std::string>& ReactantNames, Vector<lo
     subcheck += delimiter;
 
     while(substring != subcheck) {
-        // Print() << substring << std::endl;
         if (!std::getline(Data, Header)) { Print() << "Error: Could not read data in file " << filename << std::endl << "Exected: " << subcheck << std::endl; return 2;}
         first_B = Header.find("B");
         substring = Header.substr(0,first_B);
