@@ -79,7 +79,7 @@ int main(int argc, char* argv[])
         long i_max = 0;
         bool export_coeffs = true;
 
-        std::string filename = "reaction.csv";
+        std::string filename = "reaction.tsv";
         std::string savename = "results.csv";
         std::string std_file = "std.csv";
 
@@ -134,6 +134,8 @@ int main(int argc, char* argv[])
             return 6;
         }
 
+        int N = ReactantNames.size();
+        int M = Reactions.size();
 
         Print() << "Reactants: ";
         VectorPrint(ReactantNames);
@@ -157,7 +159,7 @@ int main(int argc, char* argv[])
         Print() << "Simulation Volume: " << Volume << " cm^3" << std::endl;
         Print() << "Particle Density: " << n0 << " m^-3" << std::endl;
         Print() << "Electric Field Strength: " << E << " Td  (" << ef << " kV/cm)" << std::endl;
-        if (i_max == 0) {        Print() << "Quantity of reactants: " << n << " (" << n/avogadros_number << " moles)" << std::endl;
+        if (i_max == 0) {Print() << "Quantity of reactants: " << n << " (" << n/avogadros_number << " moles)" << std::endl;
 
             i_max = long(Reactions.size()) * long(n);
             Print() << "Maximum iterations set to: " << i_max << std::endl;
@@ -193,11 +195,9 @@ int main(int argc, char* argv[])
         if (threadcount == 0) {threadcount = 1;}
         Print() << "Number of threads: " << threadcount << "/" << maxthreadcount << std::endl;
         
-        int N = ReactantQuantity.size(); // Number of reactants species
-        int M = Reactions.size();        // Number of reactions
         
         // Allocate memory for the results
-        Vector<Real> ResultVector(N + 2, 0.0);                                // Vector of size N + 2 to store results of each save point
+        Vector<Real> ResultVector(N + 2, 0.0);                              // Vector of size N + 2 to store results of each save point
         Vector<Vector<Real>> OutputMatrix(n_saves + 2, ResultVector);       // Matrix of size n_saves + 2 x N + 2 to store results of each iteration
         Vector<Vector<Real>> ErrorMatrix(n_saves + 2, ResultVector);        // Matrix of size n_saves + 2 x N + 2 to store relative errors of each iteration
         Vector<Vector<Vector<Real>>> ResultTensor(niter, OutputMatrix);     // Tensor of size niter x n_saves + 2 x N + 2 to store and combine all results
@@ -218,21 +218,21 @@ int main(int argc, char* argv[])
 
         std::ofstream results;
         results.open (savename);
-        results << "i,t,a0,N";
+        results << "i,t,a0,,N,";
         for (int k = 0; k < N; k++) {
             if (ReactantNames[k][0] != '*') {
-            results << "," << ReactantNames[k];
+            results << "," << ReactantNames[k] << "," ;
             } 
         }
         results << "\n";
 
-        std::ofstream errors;
-        errors.open (std_file);
+        // std::ofstream errors;
+        // errors.open (std_file);
         
         auto start_time = std::chrono::high_resolution_clock::now();
         Print() << "Starting KMC model..." << std::endl;
 
-        Real invn = 1.0 / niter; // Inverse of the number of iterations for average computation 
+        Real invn = 1.0 / niter; // Scale factor, the inverse of the number of iterations for average computation 
         Real ReactionMass = std::accumulate(ReactantQuantity.begin(), ReactantQuantity.end(), 0.0);
 
         if (seed == 0){        
@@ -269,36 +269,36 @@ int main(int argc, char* argv[])
             }
         }
 
-        Print() << "Computing standard deviations.. " << std::endl;
-
-        for (int i = 0; i < niter; i++) {
-            for (int j = 0; j < n_saves + 2; j++) {
-                for (int k = 0; k < N+2; k++) {
-                    ErrorMatrix[j][k] += std::pow(ResultTensor[i][j][k] - OutputMatrix[j][k], 2) /(niter * std::pow(OutputMatrix[j][k], 2));
+        if (niter < 1) {
+            Print() << "Computing standard deviations.. " << std::endl;
+            for (int i = 0; i < niter; i++) {
+                for (int j = 0; j < n_saves + 2; j++) {
+                    for (int k = 0; k < N+2; k++) {
+                        ErrorMatrix[j][k] += std::pow(ResultTensor[i][j][k] - OutputMatrix[j][k], 2) /(niter * std::pow(OutputMatrix[j][k], 2));
+                    }
                 }
-            }
+            } 
         }
 
         Print() << "Writing results to file" << std::endl;
         Real stave; 
         for (int i = 0; i < n_saves + 2; i++) {
             stave = (i) ? first_save : 0.0;
-            results << i << "," << stave << "," << OutputMatrix[i][0] << "," << OutputMatrix[i][1];
-            errors << std::sqrt(ErrorMatrix[i][0]) << "," << std::sqrt(ErrorMatrix[i][1]);
+            results << i << "," << stave << "," << OutputMatrix[i][0] << "," << std::sqrt(ErrorMatrix[i][0]) << "," << OutputMatrix[i][1] << "," << std::sqrt(ErrorMatrix[i][1]);
+            // errors << std::sqrt(ErrorMatrix[i][0]) << "," << std::sqrt(ErrorMatrix[i][1]);
     
             for (int j = 0; j < N; j++) {
                 if (ReactantNames[j][0] != '*') {
-                    results << "," << OutputMatrix[i][j+2];
-                    errors << "," << std::sqrt(ErrorMatrix[i][j+2]); 
+                    results << "," << OutputMatrix[i][j+2] << "," << std::sqrt(ErrorMatrix[i][j+2]);
                 }
             }
             if (i) {first_save *= log_save_step;} // account for large periods of inactivity
             results << "\n";
-            errors << "\n";
+            // errors << "\n";
         }
 
         results.close();
-        errors.close();
+        // errors.close();
         auto stop_time = std::chrono::high_resolution_clock::now();
         Print() << "Simulation runtime was " << std::chrono::duration_cast<std::chrono::milliseconds>(stop_time - start_time).count() << "ms" << std::endl;
         amrex::Finalize();

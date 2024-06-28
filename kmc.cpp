@@ -59,6 +59,7 @@ void Compute_Reaction_Schema( Vector<Real>& ReactionSchema, Real& SchemaSum, con
         for (int j = 0; j < N; j++) {
             tracker *= power(ReactantQuantity[j], reaction[j]);
             AMREX_ASSERT_WITH_MESSAGE(tracker == tracker, "ERROR: NaN Tracker");
+        }
 
         BaseSchema[i] = tracker * ReactionRates[i] * std::pow(Volume, 1 - Reactant_sum);
         AMREX_ASSERT_WITH_MESSAGE(BaseSchema[i] == BaseSchema[i], "ERROR: NaN Base Schema");
@@ -73,9 +74,10 @@ void Compute_Reaction_Schema( Vector<Real>& ReactionSchema, Real& SchemaSum, con
         ReactionSchema[i] = CummulativeSchema[i]*ssinv;
     }
 
-    if (std::abs(ReactionSchema[M - 1] - Real(1.0)) < 1e-15) {ReactionSchema[M - 1] = 1.0;}
+    AMREX_ASSERT_WITH_MESSAGE(std::abs(ReactionSchema[M - 1] - Real(1.0)) < 1e-15, "Cummulative Density Function is not proper!!");
+    ReactionSchema[M - 1] = 1.0; // Ensuring that the last element is exactly 1
 
-    AMREX_ASSERT_WITH_MESSAGE(Real(ReactionSchema[M - 1]) == Real(1.0), "Cummulative Density Function is not proper!!");
+   
 }
 
 
@@ -89,10 +91,10 @@ void FacilitateReaction(Vector<long>& ReactantQuantity, const Vector<int>& react
     }
 }
 
-void interpret_line(std::string Header, Vector<std::string>& content)
+void interpret_line(std::string Header, Vector<std::string>& content, char delimiter)
 {
     long oldpos = 0;
-    char delimiter = ';';
+    // char delimiter = ';';
     long newpos = Header.find(delimiter);
 
     content.clear( );
@@ -113,7 +115,7 @@ void interpret_line(std::string Header, Vector<std::string>& content)
 int LoadData(std::string filename, Vector<std::string>& ReactantNames, Vector<long>& ReactantQuantity, Vector<Vector<int>>& Reactions, Vector<ParserExecutor <4>>& ReactionRateExecutors, Vector<Parser>& ReactionRateParsers) {
 
     std::ifstream Data;
-    char delimiter = ';';
+    char delimiter = '\t';
     Data.open(filename);
     if (!Data.is_open()) {Print() << "Error: Could not open file " << filename << std::endl; return 1;}
     std::string Header;
@@ -136,7 +138,7 @@ int LoadData(std::string filename, Vector<std::string>& ReactantNames, Vector<lo
     // Reactant Name phase
     int n_params = 4;
     Vector<std::string> Entries;
-    interpret_line(Header, Entries);
+    interpret_line(Header, Entries, delimiter);
     if (Entries.size() <= n_params) { Print() << "Error: Simulation in " << filename << " contains no reactants!" << std::endl; return 3;}
 
     for (int i = n_params; i < Entries.size(); i++) {
@@ -149,7 +151,7 @@ int LoadData(std::string filename, Vector<std::string>& ReactantNames, Vector<lo
 
     // Reactant Quantity phase 
     std::getline(Data, Header);
-    interpret_line(Header, Entries);
+    interpret_line(Header, Entries, delimiter);
     if (Entries.size() < N + n_params) {
         if (Entries.size() > n_params) {
         Print() << "Error: Simulation in " << filename << " lacks initial concentration of reactant " << ReactantNames[Entries.size() - n_params] << std::endl; return 4;
@@ -170,7 +172,7 @@ int LoadData(std::string filename, Vector<std::string>& ReactantNames, Vector<lo
 
     while(std::getline(Data, Header))
     {
-        interpret_line(Header, Entries);
+        interpret_line(Header, Entries, delimiter);
         if (Entries[0].empty()) {continue;}
         if (Entries.size() != n_params + 2*N) {Print() << "Error: Simulation in " << filename << " has invalid reaction path in R" << R + 1 << std::endl << "Expected: " << n_params + 2*N << " entries --- got: " << Entries.size() << std::endl; return 7;}
 

@@ -26,7 +26,7 @@ void Compute_Reaction_Schema( Vector<Real>& ReactionSchema, Real& SchemaSum, con
 
 void FacilitateReaction(Vector<long>& ReactantQuantity, const Vector<int>& reaction);
 
-void interpret_line(std::string Header, Vector<std::string>& content);
+void interpret_line(std::string Header, Vector<std::string>& content, char delimiter);
 
 int LoadData(std::string filename, Vector<std::string>& ReactantNames,  Vector<long>& ReactantQuantity, Vector<Vector<int>>& Reactions, Vector<ParserExecutor <4>>& ReactionRateExecutors, Vector<Parser>& ReactionRateParsers);
 

@@ -17,14 +17,9 @@ script_dir = os.path.dirname(os.path.abspath(__file__))
 os.chdir(script_dir)
 
 data = pd.read_csv("results.csv", delimiter=',', header=0)
-inputdata = pd.read_csv("kinetic_test_5.csv", delimiter=';', header=1)
+inputdata = pd.read_csv("simpletest.tsv", delimiter='\t', header=1)
 inputdata = inputdata.apply(pd.to_numeric, errors='coerce')
 inputdata = inputdata.dropna(axis=0, how='all')
-
-errors = pd.read_csv("std.csv", delimiter=',', header=None)
-rel_sigma = errors.to_numpy()
-rel_sigma[np.isnan(rel_sigma)] = 1e-8
-rel_sigma[rel_sigma == 0] = 1e-8
 
 mixvals = inputdata.to_numpy(dtype=float, na_value=np.nan)
 
@@ -64,10 +59,18 @@ xy = data.to_numpy()
 i = xy[:,0]                     # index
 t = xy[:,1]                     # time
 a0 = xy[:,2]                    # reaction rate
-N = np.array(xy[:,3])           # number of particles
-R = np.array(xy[:,4:])          # species concentration
+a0_error = xy[:,3]              # reaction rate error
+N = np.array(xy[:,4])           # number of particles
+N_error = xy[:,5]               # number of particles error 
+Raw = np.array(xy[:,6:])        # species concentration
 
-ReactantNames = list(data.columns.values)[4:]
+R = Raw[:, ::2]
+Error = Raw[:, 1::2]
+
+rel_sigma = np.hstack((a0_error[:,np.newaxis], N_error[:,np.newaxis], Error))
+
+
+ReactantNames = list(data.columns.values)[6::2]
 assert len(ReactantNames) <= Rn, f"Number of species in the input file ({Rn}) does not match the number of species in the results file ({len(ReactantNames)})"
 
 
@@ -150,7 +153,7 @@ end_time = time.time()
 
 print(35*" ")
 print(f"RK45 finished at t = {t_values[-1]}")
-print(f"Duration of sim {end_time - start_time:0.3f}s)")
+print(f"Duration of sim {end_time - start_time:0.3f}s")
 print(res_values[-1])
 
 N = 1/N
@@ -162,7 +165,7 @@ ax[0].set_title("Species Concentration")
 K = ax[0].loglog(t, norm_R, lw=3)
 H = ax[0].loglog(t_values, res_values, lw=3, ls='--')
 ax[0].set_xlabel("Time [s]")
-ax[0].set_xlim([1e-4,1e0])
+ax[0].set_xlim([t[1], t[-1]])
 ax[0].set_ylim([1e-5,1.1e0])
 
 ax[0].legend([(K[i], H[i]) for i in range(len(ReactantNames))], list(ReactantNames),
@@ -182,8 +185,8 @@ G[0].set_label(r"Reaction Rate KMC")
 G[1].set_label(r"Reaction Rate RK45")
 ax[1].fill_between(t, a0 - 2*a0*rel_sigma[:,0], a0 +2*a0*rel_sigma[:,0], alpha=0.3, color='k')
 ax[1].set_xlabel("Time [s]")
-ax[1].set_xlim([1e-4,1e0])
-ax[1].set_ylim([1e6,1e8])
+ax[1].set_xlim([t[1], t[-1]])
+# ax[1].set_ylim([1e6,1e8])
 ax[1].legend()
 ax[1].set_ylabel(r"Reaction Rate [s$^{-1}$]")
 ax[1].grid()
