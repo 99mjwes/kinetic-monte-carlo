@@ -38,6 +38,6 @@ void ReactionLoop (Vector<Vector<Real>>& ResultMatrix, Vector<long> ReactantQuan
 
 void SerialReactionLoop(Vector<Vector<Vector<Real>>>& ResultTensor, Vector<long> ReactantQuantity, Vector<Real> amu, Real a0, const Vector<Vector<int>>& Reactions, const Vector<Real>& ReactionRates, const Real Volume, Real save_point, const Real runtime, const Real save_step, unsigned int init_seed, long i_max, size_t start, size_t end);
 
-void ParallelReactionLoop(Vector<Vector<Vector<Real>>>& ResultTensor, Vector<long> ReactantQuantity, Vector<Real> amu, Real a0, const Vector<Vector<int>>& Reactions, const Vector<Real>& ReactionRates, const Real Volume, Real save_point, const Real runtime, const Real save_step, unsigned int init_seed, long i_max, size_t num_threads);
+void ParallelReactionLoop(Vector<Vector<Vector<Real>>>& ResultTensor, Vector<long> ReactantQuantity, Vector<Real> amu, Real a0, const Vector<Vector<int>>& Reactions, const Vector<Real>& ReactionRates, const Real Volume, Real save_point, const Real runtime, const Real save_step, unsigned int init_seed, long i_max, size_t num_workers);
 
 #endif

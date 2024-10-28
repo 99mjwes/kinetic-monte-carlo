@@ -17,7 +17,7 @@ script_dir = os.path.dirname(os.path.abspath(__file__))
 os.chdir(script_dir)
 
 data = pd.read_csv("results.csv", delimiter=',', header=0)
-inputdata = pd.read_csv("simpletest.tsv", delimiter='\t', header=1)
+inputdata = pd.read_csv("reaction.tsv", delimiter='\t', header=1)
 inputdata = inputdata.apply(pd.to_numeric, errors='coerce')
 inputdata = inputdata.dropna(axis=0, how='all')
 
@@ -86,11 +86,22 @@ V = coeffs[4]
 P = coeffs[5]
 coeffs = coeffs[6:-1]
 
+print(f"Initial electron quantity: {(ne * V):0.0f}")
+
 assert len(coeffs) == reaction_factor.shape[0], f"Number of coefficients ({len(coeffs)}) does not match the number of reactions ({reaction_factor.shape[0]})"
 
 print(f"Assuming that the system is at {T} K and {P} Pa")
 R0 = 8.314 # J/(mol K)
 avogadros_number = 6.02214076e23
+
+# Calculate the number of electrons if not provided
+idx = np.array([i for i, ReactantName in enumerate(ReactantNames) if ReactantName in ['e-', 'e']])
+if idx.size == 0:
+    print("No electron species found!!")
+elif idx.size > 1:
+    print("Warning: Multiple electron species found!!")
+elif init_conc[idx] == 0:
+    init_conc[idx] = ne * V
 
 
 nn = np.sum(init_conc)
@@ -140,6 +151,8 @@ for i in range(i_max):
     # break loop after modeling is finished
     if rkfun.status == 'finished':
         break
+
+print(" Postprocessing..." + 15*' ', end='\r')
 
 sum_res = np.sum(res_values, axis=1)
 A0 = np.zeros_like(t_values, dtype=float128)

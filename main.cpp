@@ -74,14 +74,13 @@ int main(int argc, char* argv[])
         int n_saves = 50;
         int niter = 1;
         int modulator = 1;
-        int threadcount = 1;
+        int num_workers = 1;
         int iseed = 0;
         long i_max = 0;
         bool export_coeffs = true;
 
         std::string filename = "reaction.tsv";
         std::string savename = "results.csv";
-        std::string std_file = "std.csv";
 
         // Parameters
         ParmParse pp;
@@ -90,7 +89,6 @@ int main(int argc, char* argv[])
         pp.query("E", E);
         pp.query("filename", filename);
         pp.query("savename", savename);
-        pp.query("std_file", std_file);
         pp.query("runtime", runtime);
         pp.query("first_save", first_save);
         pp.query("n_saves", n_saves);
@@ -98,7 +96,7 @@ int main(int argc, char* argv[])
         pp.query("n_iter", niter);
         pp.query("ne", ne);
         pp.query("modulator", modulator);
-        pp.query("threadcount", threadcount);
+        pp.query("num_workers", num_workers);
         pp.query("seed", iseed);
         pp.query("export_coeffs", export_coeffs);
 
@@ -185,15 +183,15 @@ int main(int argc, char* argv[])
 
     
         // Set thread count
-        int maxthreadcount = std::thread::hardware_concurrency();
-        if (threadcount < 0) {threadcount = maxthreadcount;}
-        if (threadcount > maxthreadcount) {
-            Print() << "Warning: Requested thread count exceeds hardware capabilities!" << std::endl;
-            threadcount = maxthreadcount;
+        int maxnum_workers = std::thread::hardware_concurrency();
+        if (num_workers < 0) {num_workers = maxnum_workers;}
+        if (num_workers > maxnum_workers) {
+            Print() << "Warning: Requested worker count exceeds hardware capabilities!" << std::endl;
+            num_workers = maxnum_workers;
             }
-        if (threadcount > niter) {threadcount = niter;}
-        if (threadcount == 0) {threadcount = 1;}
-        Print() << "Number of threads: " << threadcount << "/" << maxthreadcount << std::endl;
+        if (num_workers > niter) {num_workers = niter;}
+        if (num_workers == 0) {num_workers = 1;}
+        Print() << "Number of workers: " << num_workers << "/" << maxnum_workers << std::endl;
         
         
         // Allocate memory for the results
@@ -225,9 +223,6 @@ int main(int argc, char* argv[])
             } 
         }
         results << "\n";
-
-        // std::ofstream errors;
-        // errors.open (std_file);
         
         auto start_time = std::chrono::high_resolution_clock::now();
         Print() << "Starting KMC model..." << std::endl;
@@ -251,10 +246,10 @@ int main(int argc, char* argv[])
         };
         
         // Run the simulation
-        if (threadcount > niter || threadcount == 1) {
+        if (num_workers > niter || num_workers == 1) {
             SerialReactionLoop(ResultTensor, ReactantQuantity, amu, a0, Reactions, ReactionRates, Volume, first_save, runtime, log_save_step, seed, i_max, 0, niter);
         } else {
-            ParallelReactionLoop(ResultTensor, ReactantQuantity, amu, a0, Reactions, ReactionRates, Volume, first_save, runtime, log_save_step, seed, i_max, threadcount);
+            ParallelReactionLoop(ResultTensor, ReactantQuantity, amu, a0, Reactions, ReactionRates, Volume, first_save, runtime, log_save_step, seed, i_max, num_workers);
         }
 
 
@@ -269,7 +264,7 @@ int main(int argc, char* argv[])
             }
         }
 
-        if (niter < 1) {
+        if (niter > 1) {
             Print() << "Computing standard deviations.. " << std::endl;
             for (int i = 0; i < niter; i++) {
                 for (int j = 0; j < n_saves + 2; j++) {

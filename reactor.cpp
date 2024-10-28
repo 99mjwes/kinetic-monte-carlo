@@ -19,23 +19,24 @@ void SerialReactionLoop(Vector<Vector<Vector<Real>>>& ResultTensor, Vector<long>
 }
 
 
-void ParallelReactionLoop(Vector<Vector<Vector<Real>>>& ResultTensor, Vector<long> ReactantQuantity, Vector<Real> amu, Real a0, const Vector<Vector<int>>& Reactions, const Vector<Real>& ReactionRates, const Real Volume, Real save_point, const Real runtime, const Real save_step, unsigned int init_seed, long i_max, size_t num_threads) {
-    std::vector<std::thread> threads;
-    size_t chunk_size = ResultTensor.size() / num_threads;
-    size_t start = 0;
-    size_t end =0;
+void ParallelReactionLoop(Vector<Vector<Vector<Real>>>& ResultTensor, Vector<long> ReactantQuantity, Vector<Real> amu, Real a0, const Vector<Vector<int>>& Reactions, const Vector<Real>& ReactionRates, const Real Volume, Real save_point, const Real runtime, const Real save_step, unsigned int init_seed, long i_max, size_t num_workers) {
+    std::vector<std::thread> workers;
 
-    for (size_t i = 0; i < num_threads - 1; ++i) {
-        end = start + chunk_size;
-        threads.emplace_back(SerialReactionLoop, std::ref(ResultTensor), ReactantQuantity, amu, a0, std::cref(Reactions), std::cref(ReactionRates), Volume, save_point, runtime, save_step, init_seed, i_max, start, end);
+    size_t mod = ResultTensor.size() / num_workers;
+    size_t rem = ResultTensor.size() % num_workers;
+
+    size_t start = 0;
+    size_t end = 0;
+
+    for (size_t i = 0; i < num_workers; ++i) {
+        end = start + mod + (i < rem);
+        workers.emplace_back(SerialReactionLoop, std::ref(ResultTensor), ReactantQuantity, amu, a0, std::cref(Reactions), std::cref(ReactionRates), Volume, save_point, runtime, save_step, init_seed, i_max, start, end);
+        Print() << "Worker " << i << " will run sim " << start + 1 << " to " << end << std::endl;
         start = end;
     }
 
-    // Last thread handles any remaining entries
-    threads.emplace_back(SerialReactionLoop, std::ref(ResultTensor), ReactantQuantity, amu, a0, std::cref(Reactions), std::cref(ReactionRates), Volume, save_point, runtime, save_step, init_seed, i_max, start, size_t(ResultTensor.size()));
-
-    // Join all threads
-    for (auto& thread : threads) {
+    // Join all workers
+    for (auto& thread : workers) {
         thread.join();
     }
 }
