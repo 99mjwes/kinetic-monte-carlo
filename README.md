@@ -1,4 +1,4 @@
-# Kinetic Monte-Carlo Code for Simulation Atmospheric Chemistry
+# Kinetic Monte-Carlo Code for Simulation of Atmospheric Chemistry
 A Kinetic Monte Carlo Code for Simulation of Atmospheric Chemistry in an AMReX Framework
 
 This Kinetic Monte Carlo (KMC) model can accurately
@@ -35,7 +35,7 @@ Then, run the programme with
 - **first_save** - First time point for which to save a data point.
 - **n_saves** - Number of data points in the saved results.
 - **max_steps** - Maximum number of reactions to perform in a simulation. Liberal estimate used if omitted.
-- **n_iter** - Number of simulation iterations. A higher value reduced variance in the result, but increases computational time. Defaults to 1. 
+- **n_iter** - Number of simulation iterations. A higher value reduces variance in the result, but increases computational time. Defaults to 1. 
 - **ne** - Initial electron density in $m^{-3}$. Used to compute the initial electron quantity if the latter is not provided.
 - **num_workers** - Number of workers/threads to use. Defaults to 1.
 - **seed** - Initial seed for the KMC. Random number is used if omitted.
@@ -60,7 +60,6 @@ many species are present. The last N entries should be empty. From the example f
 | | | | | | | | | | |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | **A** | **B** | **C** | **Equation** | O | O2 | O3 | - | - | - |
-| | | | | | | | | | | 
 
 For the next line the first four entries should be left blank. The next N entries will contain the
 initial quantity of the species, while, again, the last N entries should be empty.
@@ -68,7 +67,6 @@ initial quantity of the species, while, again, the last N entries should be empt
 | | | | | | | | | | |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | - | - | - | - | 100000 | 10 | 0 | - | - | - |
-| | | | | | | | | | | 
 
 For every following line the first three entries will specify the coefficients A, B and C and the fourth entry will provide the coefficient equation to use,
 where the default will be used if the entry is left blank. The next N entries will specify the
@@ -80,7 +78,6 @@ the reaction will not be defined.
 8.31E-033 | -0.63 | 0 | default | 2 | 1 | 0 | 0 | 2 | 0
 2E-11 | 0 |-2300 | default | 1 | 0 | 1 | 0 | 2 | 0
 6.9E-034 | -1.25 | 0 | default | 1 | 2 | 0 | 0 | 1 | 1
-| | | | | | | | | | | 
 
 ### Notes
 - If the programme detects two identical reactions it will throw a warning. You may
