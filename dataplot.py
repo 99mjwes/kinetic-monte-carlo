@@ -12,14 +12,9 @@ script_dir = os.path.dirname(os.path.abspath(__file__))
 os.chdir(script_dir)
 
 print(os.getcwd())
-data = pd.read_csv("0D_results.csv", delimiter=',', header=0)
-# errors = pd.read_csv("std.csv", delimiter=',', header=None)
+data = pd.read_csv("results.csv", delimiter=',', header=0)
+
 xy = data.to_numpy()
-
-# rel_sigma = errors.to_numpy()
-# rel_sigma[np.isnan(rel_sigma)] = 1e-8
-# rel_sigma[rel_sigma == 0] = 1e-8
-
 
 i = xy[:,0]                     # index
 t = xy[:,1]                     # time
