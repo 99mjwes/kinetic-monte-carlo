@@ -11,12 +11,12 @@
 
 using namespace amrex;
 
-Real power(long base, int exponent) {
-    if (exponent == 0) {return 1.0;}      // x^0 = 1, special case 0^0 = 1!!
-    if (base < exponent) {return 0.0;}    // x*(x-1)*(x-2)*...*0*... = 0
+Real power(unsigned long base, int exponent) {
+    // if (exponent == 0) {return 1.0;}      // x^0 = 1, special case 0^0 = 1!!
+    // if (base < static_cast<unsigned long>(exponent)) {return 0.0;}    // x*(x-1)*(x-2)*...*0*... = 0
     Real p = 1.0;
     for (int i = 0; i < exponent; i++) {
-        p *= Real(base - i);
+        p *= static_cast<Real>(base - i);
     }
     return p;
 }
@@ -27,61 +27,80 @@ Real power(long base, int exponent) {
 //         static std::seed_seq seed{device(), device(), device(), device()};
 //         // static std::default_random_engine generator(seed);
 //         static  std::mt19937_64 generator (seed);
-//         std::uniform_real_distribution<Real> distribution (0,1);
+//         std::uniform_Real_distribution<Real> distribution (0,1);
 //         return distribution(generator);
-
 // }
 
 
-void Compute_Reaction_Schema( Vector<Real>& ReactionSchema, Real& SchemaSum, const Real Volume, const Vector<long>& ReactantQuantity, const Vector<Vector<int>>& Reactions, const Vector<Real>& ReactionRates)
+void Compute_Reaction_Schema( Vector<Real>& ReactionSchema, Real& SchemaSum, const Real Volume, const Vector<unsigned long>& ReactantQuantity, const Vector<Vector<int>>& Reactions, const Vector<Real>& ReactionRates)
 {
     int N = ReactantQuantity.size();
     int M = Reactions.size();
 
     AMREX_ASSERT_WITH_MESSAGE(Reactions[0].size() == 2*N, "ERROR: Vector mismatch in Reactions");
 
-    Vector<int> reaction(N);
+    // Vector<int> reaction(N);
     Vector<Real> BaseSchema(M);
     Vector<Real> CummulativeSchema(M);
 
-    long Reactant_sum;
+    int Reactant_sum;
     Real tracker;
     Real ssinv;
 
    
     for (int i = 0; i < M; i++) {
-        std::copy(Reactions[i].begin(), Reactions[i].end() - N, reaction.begin());
         tracker = 1;
 
-        Reactant_sum = std::accumulate(reaction.begin(), reaction.end() , long(0));
+        Reactant_sum = VectorSum(Reactions[i], static_cast<uint>(N));
         AMREX_ASSERT_WITH_MESSAGE(Reactant_sum == Reactant_sum, "ERROR: NaN Reactant sum"); 
 
-        for (int j = 0; j < N; j++) {
-            tracker *= power(ReactantQuantity[j], reaction[j]);
+        // Compute nested reactant products
+        // Unroll the loop for better performance
+        int j = 0;
+        for ( ; j + 3 < N; j += 4) {
+            tracker *= power(ReactantQuantity[j], Reactions[i][j]);
+            tracker *= power(ReactantQuantity[j + 1], Reactions[i][j + 1]);
+            tracker *= power(ReactantQuantity[j + 2], Reactions[i][j + 2]);
+            tracker *= power(ReactantQuantity[j + 3], Reactions[i][j + 3]);
+        }
+        
+        // Handle remaining elements if N is not a multiple of 4
+        for ( ; j < N; j++) {
+            tracker *= power(ReactantQuantity[j], Reactions[i][j]);
             AMREX_ASSERT_WITH_MESSAGE(tracker == tracker, "ERROR: NaN Tracker");
         }
+
+
 
         BaseSchema[i] = tracker * ReactionRates[i] * std::pow(Volume, 1 - Reactant_sum);
         AMREX_ASSERT_WITH_MESSAGE(BaseSchema[i] == BaseSchema[i], "ERROR: NaN Base Schema");
     }
 
     std::partial_sum(BaseSchema.begin(), BaseSchema.end(), CummulativeSchema.begin());
-    SchemaSum = std::accumulate(BaseSchema.begin(), BaseSchema.end(), Real(0.0));
+ 
+    SchemaSum = VectorSum(BaseSchema);
+ 
+    AMREX_ASSERT_WITH_MESSAGE(SchemaSum == SchemaSum, "ERROR: NaN Schema Sum");
+    AMREX_ASSERT_WITH_MESSAGE(SchemaSum >= 0.0, "ERROR: Schema Sum is negative!!");
 
-    ssinv = 1/SchemaSum; // Inverse Schema Sum
+
+    ssinv = (SchemaSum > 0) ? (1 / SchemaSum) : 0.0;
 
     for (int i = 0; i < M; i++) {
         ReactionSchema[i] = CummulativeSchema[i]*ssinv;
     }
 
-    AMREX_ASSERT_WITH_MESSAGE(std::abs(ReactionSchema[M - 1] - Real(1.0)) < 1e-15, "Cummulative Density Function is not proper!!");
+    if (ReactionSchema[M - 1] == 0.0) {
+        return; // No reaction to be performed
+    }
+    AMREX_ASSERT_WITH_MESSAGE(std::abs(ReactionSchema[M - 1] - 1.0) < 1e-15, "Cummulative Density Function is not proper!!");
     ReactionSchema[M - 1] = 1.0; // Ensuring that the last element is exactly 1
 
    
 }
 
 
-void FacilitateReaction(Vector<long>& ReactantQuantity, const Vector<int>& reaction){
+void FacilitateReaction(Vector<unsigned long>& ReactantQuantity, const Vector<int>& reaction){
     int N = ReactantQuantity.size();
 
     AMREX_ASSERT_WITH_MESSAGE(reaction.size() == 2*N, "ERROR: Size mismatch in reaction");
@@ -93,13 +112,13 @@ void FacilitateReaction(Vector<long>& ReactantQuantity, const Vector<int>& react
 
 void interpret_line(std::string Header, Vector<std::string>& content, char delimiter)
 {
-    long oldpos = 0;
+    int oldpos = 0;
     // char delimiter = ';';
-    long newpos = Header.find(delimiter);
+    int newpos = Header.find(delimiter);
 
     content.clear( );
     
-    while(newpos != long(-1))
+    while(newpos != -1)
     {
         std::string substring = Header.substr(oldpos,newpos - oldpos);
         oldpos = newpos + 1;
@@ -112,7 +131,7 @@ void interpret_line(std::string Header, Vector<std::string>& content, char delim
 
 }
 
-int LoadData(std::string filename, Vector<std::string>& ReactantNames, Vector<long>& ReactantQuantity, Vector<Vector<int>>& Reactions, Vector<ParserExecutor <4>>& ReactionRateExecutors, Vector<Parser>& ReactionRateParsers) {
+int LoadData(std::string filename, Vector<std::string>& ReactantNames, Vector<unsigned long>& ReactantQuantity, Vector<Vector<int>>& Reactions, Vector<ParserExecutor <4>>& ReactionRateExecutors, Vector<Parser>& ReactionRateParsers) {
 
     std::ifstream Data;
     char delimiter = '\t';
@@ -122,7 +141,7 @@ int LoadData(std::string filename, Vector<std::string>& ReactantNames, Vector<lo
     std::getline(Data, Header);
 
     // Skipping initial lines - may be desciption!
-    std::size_t first_B = 0;
+    int first_B = 0;
     std::string substring = "";
 
     std::string subcheck = "A";
@@ -161,7 +180,7 @@ int LoadData(std::string filename, Vector<std::string>& ReactantNames, Vector<lo
     }
 
     for (int i = n_params; i < n_params + N; i++) {
-        ReactantQuantity.push_back( long( std::atof(Entries[i].c_str())) );
+        ReactantQuantity.push_back(static_cast<unsigned long>( std::atof(Entries[i].c_str())) );
     }
    
     Vector<int> reaction (2*N);

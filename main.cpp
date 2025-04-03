@@ -11,8 +11,8 @@
 
 #include <random>
 
-
 using namespace amrex;
+
 
 void ReactionPrint(const Vector<int>& reaction, const Vector<std::string>& ReactantNames, Real ReactionRate) {
 
@@ -49,12 +49,15 @@ int main(int argc, char* argv[])
 {
     amrex::Initialize(argc,argv);
     // {
+
         // Constants
+        bool Electrons_Are_Ideal_Gas = false;
+
         Real avogadros_number = 6.02214076e23;
         Real R = 8.314;
 
         Vector<std::string> ReactantNames;
-        Vector<long> ReactantQuantity;
+        Vector<unsigned long> ReactantQuantity;
         Vector<Vector<int>> Reactions;
         Vector<Real> ReactionRates;
         Vector<ParserExecutor <4>> ReactionRateExecutors;
@@ -76,7 +79,7 @@ int main(int argc, char* argv[])
         int modulator = 1;
         int num_workers = 1;
         int iseed = 0;
-        long i_max = 0;
+        int i_maxx = 0;
         bool export_coeffs = true;
 
         std::string filename = "reaction.tsv";
@@ -92,7 +95,7 @@ int main(int argc, char* argv[])
         pp.query("runtime", runtime);
         pp.query("first_save", first_save);
         pp.query("n_saves", n_saves);
-        pp.query("max_steps", i_max);
+        pp.query("max_steps", i_maxx);
         pp.query("n_iter", niter);
         pp.query("ne", ne);
         pp.query("modulator", modulator);
@@ -100,7 +103,10 @@ int main(int argc, char* argv[])
         pp.query("seed", iseed);
         pp.query("export_coeffs", export_coeffs);
 
-        size_t seed = size_t(iseed);
+        unsigned long i_max = static_cast<unsigned long>(i_maxx);
+        unsigned long seed = static_cast<unsigned long>(iseed);
+
+
 
         Real log_save_step =  std::exp( (std::log(runtime) - std::log(first_save)) / (n_saves) );
         AMREX_ASSERT_WITH_MESSAGE(log_save_step > 1, "Save step improperly sized!"); // Assert that test_save_step is larger than 1
@@ -117,7 +123,7 @@ int main(int argc, char* argv[])
 
         // Overwrite the reaction rates with the parsed values
         for (int i = 0; i < ReactionRateExecutors.size(); i++) {
-            ReactionRates.push_back(ReactionRateExecutors[i](T,E,Te,ne*1e-6));
+            ReactionRates.push_back((ReactionRateExecutors[i](T, E, Te, ne*1e-6)));
         }
 
         if (errorlevel != 0) {
@@ -126,7 +132,7 @@ int main(int argc, char* argv[])
         }
 
         // Simulation definitions
-        long n = std::accumulate(ReactantQuantity.begin(), ReactantQuantity.end(), long(0));
+        unsigned long n = VectorSum(ReactantQuantity);
         if (n == 0) {            
             Print() << "Error: Total Reactant Quantity is zero!" << std::endl;
             return 6;
@@ -134,6 +140,17 @@ int main(int argc, char* argv[])
 
         int N = ReactantNames.size();
         int M = Reactions.size();
+        int e_pos = -1;
+
+        for(int i = 0; i < N; i++) { // Check if initial electron quantity is defined
+            if (ReactantNames[i] == "e" || ReactantNames[i] == "*e") {
+                if (!Electrons_Are_Ideal_Gas) {n = n - ReactantQuantity[i];} 
+                e_pos = i;
+                break;
+            }
+        }
+
+        Print() << "Electron Position: " << e_pos << std::endl;
 
         Print() << "Reactants: ";
         VectorPrint(ReactantNames);
@@ -149,7 +166,13 @@ int main(int argc, char* argv[])
         Real Volume = 1e6 * n * R * T / (P * avogadros_number); // assume ideal gas in cm^3
         Real n0 = 1e6*n/Volume;
         Real ef = n0 * 1e-21 * 1e-5 * E; // Electric field in kV/cm
-        long n_electron = long(ne * Volume);
+        unsigned long n_electron = static_cast<unsigned long>(ne * Volume);
+
+        if ((e_pos > -1) && (ne != 0.0) && (ReactantQuantity[e_pos] == 0)) {
+            ReactantQuantity[e_pos] = n_electron;
+        } else {
+            n_electron = ReactantQuantity[e_pos];
+        }
 
         Print() << "Loaded following Parameters:" << std::endl;
         Print() << "Pressure is " << P << "Pa" << std::endl;
@@ -157,9 +180,10 @@ int main(int argc, char* argv[])
         Print() << "Simulation Volume: " << Volume << " cm^3" << std::endl;
         Print() << "Particle Density: " << n0 << " m^-3" << std::endl;
         Print() << "Electric Field Strength: " << E << " Td  (" << ef << " kV/cm)" << std::endl;
+        Print() << "Inital Electron Count: " << n_electron << std::endl;
         if (i_max == 0) {Print() << "Quantity of reactants: " << n << " (" << n/avogadros_number << " moles)" << std::endl;
 
-            i_max = long(Reactions.size()) * long(n);
+            i_max = static_cast<unsigned long>(Reactions.size()) * static_cast<unsigned long>(n);
             Print() << "Maximum iterations set to: " << i_max << std::endl;
         } 
         
@@ -200,13 +224,6 @@ int main(int argc, char* argv[])
         Vector<Vector<Real>> ErrorMatrix(n_saves + 2, ResultVector);        // Matrix of size n_saves + 2 x N + 2 to store relative errors of each iteration
         Vector<Vector<Vector<Real>>> ResultTensor(niter, OutputMatrix);     // Tensor of size niter x n_saves + 2 x N + 2 to store and combine all results
 
-        for(int i = 0; i < N; i++) { // Check if initial electron quantity is defined
-            if ((ReactantNames[i] == "e" || ReactantNames[i] == "*e") && ne != 0 && ReactantQuantity[i] == 0) {
-                ReactantQuantity[i] = n_electron;
-                Print() << "Initial Electron quantity: " << n_electron << std::endl;
-            }
-        }
-
         Vector<Real> amu(M);
 
         // Compute the reaction initial conditions
@@ -228,7 +245,7 @@ int main(int argc, char* argv[])
         Print() << "Starting KMC model..." << std::endl;
 
         Real invn = 1.0 / niter; // Scale factor, the inverse of the number of iterations for average computation 
-        Real ReactionMass = std::accumulate(ReactantQuantity.begin(), ReactantQuantity.end(), 0.0);
+        Real ReactionMass = VectorSum(ReactantQuantity);
 
         if (seed == 0){        
             std::random_device device;
@@ -241,7 +258,7 @@ int main(int argc, char* argv[])
             ResultTensor[i][0][0] = a0;
             ResultTensor[i][0][1] = ReactionMass;
             for (int j = 0; j < N; j++) {
-                ResultTensor[i][0][j+2] = Real(ReactantQuantity[j]);
+                ResultTensor[i][0][j+2] = static_cast<Real>(ReactantQuantity[j]);
             }  
         };
         

@@ -1,4 +1,3 @@
-
 #include <AMReX.H>
 #include <AMReX_Print.H>
 #include <AMReX_ParmParse.H>
@@ -11,24 +10,24 @@
 
 using namespace amrex;
 
-void SerialReactionLoop(Vector<Vector<Vector<Real>>>& ResultTensor, Vector<long> ReactantQuantity, Vector<Real> amu, Real a0, const Vector<Vector<int>>& Reactions, const Vector<Real>& ReactionRates, const Real Volume, Real save_point, const Real runtime, const Real save_step, unsigned int init_seed, long i_max, size_t start, size_t end) {
+void SerialReactionLoop(Vector<Vector<Vector<Real>>>& ResultTensor, Vector<unsigned long> ReactantQuantity, Vector<Real> amu, Real a0, const Vector<Vector<int>>& Reactions, const Vector<Real>& ReactionRates, const Real Volume, Real save_point, const Real runtime, const Real save_step, unsigned int init_seed, unsigned long i_max, unsigned long start, unsigned long end) {
 
-    for (size_t i = start; i < end; i++ ) {
+    for (unsigned long i = start; i < end; i++ ) {
         ReactionLoop (ResultTensor[i], ReactantQuantity, amu, a0, Reactions, ReactionRates, Volume, save_point, runtime, save_step, init_seed + i, i_max);
     }
 }
 
 
-void ParallelReactionLoop(Vector<Vector<Vector<Real>>>& ResultTensor, Vector<long> ReactantQuantity, Vector<Real> amu, Real a0, const Vector<Vector<int>>& Reactions, const Vector<Real>& ReactionRates, const Real Volume, Real save_point, const Real runtime, const Real save_step, unsigned int init_seed, long i_max, size_t num_workers) {
+void ParallelReactionLoop(Vector<Vector<Vector<Real>>>& ResultTensor, Vector<unsigned long> ReactantQuantity, Vector<Real> amu, Real a0, const Vector<Vector<int>>& Reactions, const Vector<Real>& ReactionRates, const Real Volume, Real save_point, const Real runtime, const Real save_step, unsigned int init_seed, unsigned long i_max, unsigned long num_workers) {
     std::vector<std::thread> workers;
 
-    size_t mod = ResultTensor.size() / num_workers;
-    size_t rem = ResultTensor.size() % num_workers;
+    unsigned long mod = ResultTensor.size() / num_workers;
+    unsigned long rem = ResultTensor.size() % num_workers;
 
-    size_t start = 0;
-    size_t end = 0;
+    unsigned long start = 0;
+    unsigned long end = 0;
 
-    for (size_t i = 0; i < num_workers; ++i) {
+    for (unsigned long i = 0; i < num_workers; ++i) {
         end = start + mod + (i < rem);
         workers.emplace_back(SerialReactionLoop, std::ref(ResultTensor), ReactantQuantity, amu, a0, std::cref(Reactions), std::cref(ReactionRates), Volume, save_point, runtime, save_step, init_seed, i_max, start, end);
         Print() << "Worker " << i << " will run sim " << start + 1 << " to " << end << std::endl;
@@ -43,7 +42,7 @@ void ParallelReactionLoop(Vector<Vector<Vector<Real>>>& ResultTensor, Vector<lon
 
 
 
-void ReactionLoop (Vector<Vector<Real>>& ResultMatrix, Vector<long> ReactantQuantity, Vector<Real> amu, Real a0, const Vector<Vector<int>>& Reactions, const Vector<Real>& ReactionRates, const Real Volume, Real save_point, const Real runtime, const Real save_step, unsigned int init_seed, long i_max) {
+void ReactionLoop (Vector<Vector<Real>>& ResultMatrix, Vector<unsigned long> ReactantQuantity, Vector<Real> amu, Real a0, const Vector<Vector<int>>& Reactions, const Vector<Real>& ReactionRates, const Real Volume, Real save_point, const Real runtime, const Real save_step, unsigned int init_seed, unsigned long i_max) {
     
     // Random number generator
     std::seed_seq seed{init_seed, init_seed, init_seed, init_seed};
@@ -55,7 +54,7 @@ void ReactionLoop (Vector<Vector<Real>>& ResultMatrix, Vector<long> ReactantQuan
     Vector<Real> ResultVector(N+2, 0);
 
     // Initialize the Reaction
-    int ii = 0;
+    Real ii = 0;
     int k = 0;
     Real t = 0;
     
@@ -65,7 +64,7 @@ void ReactionLoop (Vector<Vector<Real>>& ResultMatrix, Vector<long> ReactantQuan
     // Main Reaction Loop
     while (t<runtime) {
 
-        if (a0*runtime*100 < 1.0) {
+        if ((a0 * runtime * 100.0) < 1.0) {
             break;
         }
 
@@ -79,7 +78,7 @@ void ReactionLoop (Vector<Vector<Real>>& ResultMatrix, Vector<long> ReactantQuan
         r2 = distribution(generator);
 
         // generating tau and mu
-        tau = 1/a0 * std::log(1/r1);
+        tau =  std::log(1/r1) / a0;
         auto mu0 = std::upper_bound(amu.begin(), amu.end(), r2);
         mu = std::distance(amu.begin(), mu0);
 
@@ -107,12 +106,19 @@ void ReactionLoop (Vector<Vector<Real>>& ResultMatrix, Vector<long> ReactantQuan
             
         }
     }
+
     // Post-simlation save
+    if (ii >= i_max) { // if the simulation reached the maximum number of iterations
+        Print() << "    Runtime:        " << runtime << std::endl;
+        Print() << "    Save Point:     " << save_point << std::endl;
+        Print() << "    Final time:     " << t << std::endl;
+        Print() << "    Final a0:       " << a0 << std::endl;
+        Print() << "    Last reaction:  " << ii << std::endl;
+        Print() << "    Last Time Step: " << tau << std::endl;
+        return;
+    }
     while (runtime >= save_point) {
             k++;
-            Real lerpt = (save_point - t + tau) / tau;
-            AMREX_ASSERT_WITH_MESSAGE(lerpt >= 0.0 && lerpt <= 1.0, "Interpolation factor is out of bounds!");
-
             ResultMatrix[k][0] = a0;
             ResultMatrix[k][1] = std::accumulate(ReactantQuantity.begin(), ReactantQuantity.end(), 0.0);
             for (int j = 0; j < N; j++) {
@@ -122,4 +128,5 @@ void ReactionLoop (Vector<Vector<Real>>& ResultMatrix, Vector<long> ReactantQuan
             save_point *= save_step; // account for large periods of inactivity
             
         }
+        // Print() << " Completed simulation with " << ii << " reactions" << std::endl;
 }
