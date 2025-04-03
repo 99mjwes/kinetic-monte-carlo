@@ -13,13 +13,8 @@ os.chdir(script_dir)
 
 print(os.getcwd())
 data = pd.read_csv("results.csv", delimiter=',', header=0)
-# errors = pd.read_csv("std.csv", delimiter=',', header=None)
+
 xy = data.to_numpy()
-
-# rel_sigma = errors.to_numpy()
-# rel_sigma[np.isnan(rel_sigma)] = 1e-8
-# rel_sigma[rel_sigma == 0] = 1e-8
-
 
 i = xy[:,0]                     # index
 t = xy[:,1]                     # time
@@ -53,7 +48,7 @@ ax[0].set_title("Species Concentration")
 K = ax[0].loglog(t, norm_R, lw=3)
 ax[0].set_xlabel("Time [s]")
 ax[0].set_xlim([t[0], t[-1]])
-ax[0].set_ylim([1e-5,1.1])
+# ax[0].set_ylim([1e-5,1.1])
 for i, axes in enumerate(K):
     axes.set_label(ReactantNames[2*i+6])
     ax[0].fill_between(t, norm_R[:,i] - 2*norm_R[:,i]*rel_sigma[:,i+2], norm_R[:,i] +2*norm_R[:,i]*rel_sigma[:,i+2], alpha=0.3, color=axes.get_color())
