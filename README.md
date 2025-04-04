@@ -40,6 +40,7 @@ Then, run the programme with
 - **num_workers** - Number of workers/threads to use. Defaults to 1.
 - **seed** - Initial seed for the KMC. Random number is used if omitted.
 - **export_coeffs** - Exports coefficients for the *dataRK45.py* comparison tool. Defaults to *true*
+- **volume** - Sets the volume of the simulation in $cm^3$. If not set, the volume will be computed from the other parameters.
 
 
 ## Data Input
