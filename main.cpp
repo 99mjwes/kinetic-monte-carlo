@@ -74,6 +74,7 @@ int main(int argc, char* argv[])
         Real runtime = 1e-2;
         Real first_save = 1e-8;
         Real ne = 0;
+        Real V = 0;
         int n_saves = 50;
         int niter = 1;
         int modulator = 1;
@@ -90,6 +91,8 @@ int main(int argc, char* argv[])
         pp.query("T", T);
         pp.query("P", P);
         pp.query("E", E);
+        pp.query("Electrons_Are_Ideal_Gas", Electrons_Are_Ideal_Gas);
+        pp.query("volume", V);
         pp.query("filename", filename);
         pp.query("savename", savename);
         pp.query("runtime", runtime);
@@ -163,7 +166,12 @@ int main(int argc, char* argv[])
             }
 
         ne *= 1e-6; // Convert to cm^-3
-        Real Volume = 1e6 * n * R * T / (P * avogadros_number); // assume ideal gas in cm^3
+        Real Volume;
+        if (V == 0.0) {
+            Volume = 1e6 * n * R * T / (P * avogadros_number); // assume ideal gas in cm^3
+        } else {
+            Volume = V;
+        }
         Real n0 = 1e6*n/Volume;
         Real ef = n0 * 1e-21 * 1e-5 * E; // Electric field in kV/cm
         unsigned long n_electron = static_cast<unsigned long>(ne * Volume);
@@ -181,9 +189,9 @@ int main(int argc, char* argv[])
         Print() << "Particle Density: " << n0 << " m^-3" << std::endl;
         Print() << "Electric Field Strength: " << E << " Td  (" << ef << " kV/cm)" << std::endl;
         Print() << "Inital Electron Count: " << n_electron << std::endl;
-        if (i_max == 0) {Print() << "Quantity of reactants: " << n << " (" << n/avogadros_number << " moles)" << std::endl;
-
-            i_max = static_cast<unsigned long>(Reactions.size()) * static_cast<unsigned long>(n);
+        Print() << "Quantity of reactants: " << (n + n_electron) << " (" << (n + n_electron)/avogadros_number << " moles)" << std::endl;
+        if (i_max == 0) {
+            i_max = static_cast<unsigned long>(Reactions.size()) * n;
             Print() << "Maximum iterations set to: " << i_max << std::endl;
         } 
         
