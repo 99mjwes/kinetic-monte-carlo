@@ -367,15 +367,15 @@ int main(int argc, char *argv[])
         for (int j = 0; j < niter; j++)
         {
             ReactionMass = n_amb > 0 ? n_amb * Volume * 1e-6 : std::accumulate(ReactantMatrix[j].begin(), ReactantMatrix[j].end(), 0.0);
-            ErrorVector[0] += std::pow(simdata[j].a0 - OutputVector[0], 2) * inverse_iter_count;
-            ErrorVector[1] += std::pow(ReactionMass - OutputVector[1], 2) * inverse_iter_count;
+            ErrorVector[0] += std::pow(simdata[j].a0 - OutputVector[0], 2) / (niter * std::pow(OutputVector[0], 2));
+            ErrorVector[1] += std::pow(ReactionMass - OutputVector[1], 2) / (niter * std::pow(OutputVector[1], 2));
             for (int k = 0; k < N; k++)
             {
-                ErrorVector[k+2] += std::pow(ReactantMatrix[j][k] - OutputVector[k+2], 2) * inverse_iter_count;
+                ErrorVector[k+2] += std::pow(ReactantMatrix[j][k] - OutputVector[k+2], 2) / (niter * std::pow(OutputVector[k+2], 2));
             }
             for (int k = 0; k < M; k++)
             {
-                ReactionErrorVector[k] += std::pow(ReactionCountMatrix[j][k] - ReactionCountVector[k], 2) * inverse_iter_count;
+                ReactionErrorVector[k] += std::pow(ReactionCountMatrix[j][k] - ReactionCountVector[k], 2) / (niter * std::pow(ReactionCountVector[k], 2));
                 ReactionCountMatrix[j][k] = 0; // reset for next iteration
             }
         }
