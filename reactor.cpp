@@ -10,15 +10,15 @@
 
 using namespace amrex;
 
-void SerialReactionLoop(Vector<Vector<ULong>>& ReactantQuantity, Vector<Real> amu, Real a0, const Vector<Vector<int>>& Reactions, const Vector<Real>& ReactionRates, Vector<Vector<ULong>>& ReactionTracker, Vector<SimulationData>& simdata, ULong start, ULong end) {
+void SerialReactionLoop(Vector<Vector<ULong>>& ReactantQuantity, const Vector<Vector<int>>& Reactions, const Vector<Real>& ReactionRates, Vector<Vector<ULong>>& ReactionTracker, Vector<SimulationData>& simdata, ULong start, ULong end) {
 
     for (size_t i = start; i < end; i++ ) {
-        ReactionLoop (ReactantQuantity[i], amu, a0, Reactions, ReactionRates, ReactionTracker[i], simdata[i]);
+        ReactionLoop (ReactantQuantity[i], Reactions, ReactionRates, ReactionTracker[i], simdata[i]);
     }
 }
 
 
-void ParallelReactionLoop(Vector<Vector<ULong>>& ReactantQuantity, Vector<Real> amu, Real a0, const Vector<Vector<int>>& Reactions, const Vector<Real>& ReactionRates, Vector<Vector<ULong>>& ReactionTracker, Vector<SimulationData>& simdata, ULong num_workers) {
+void ParallelReactionLoop(Vector<Vector<ULong>>& ReactantQuantity, const Vector<Vector<int>>& Reactions, const Vector<Real>& ReactionRates, Vector<Vector<ULong>>& ReactionTracker, Vector<SimulationData>& simdata, ULong num_workers) {
     std::vector<std::thread> workers;
 
     size_t mod = ReactantQuantity.size() / num_workers;
@@ -29,7 +29,7 @@ void ParallelReactionLoop(Vector<Vector<ULong>>& ReactantQuantity, Vector<Real> 
 
     for (size_t i = 0; i < num_workers; ++i) {
         end = start + mod + (i < rem);
-        workers.emplace_back(SerialReactionLoop, std::ref(ReactantQuantity), amu, a0, std::cref(Reactions), std::cref(ReactionRates), std::ref(ReactionTracker), std::ref(simdata), start, end);
+        workers.emplace_back(SerialReactionLoop, std::ref(ReactantQuantity), std::cref(Reactions), std::cref(ReactionRates), std::ref(ReactionTracker), std::ref(simdata), start, end);
         // Print() << "Worker " << i << " will run sim " << start + 1 << " to " << end << std::endl;
         start = end;
     }
@@ -42,19 +42,22 @@ void ParallelReactionLoop(Vector<Vector<ULong>>& ReactantQuantity, Vector<Real> 
 
 
 
-void ReactionLoop (Vector<ULong>& ReactantQuantity, Vector<Real> amu, Real a0, const Vector<Vector<int>>& Reactions, const Vector<Real>& ReactionRates, Vector<ULong>& ReactionTracker, SimulationData& simdata) {
+void ReactionLoop (Vector<ULong>& ReactantQuantity, const Vector<Vector<int>>& Reactions, const Vector<Real>& ReactionRates, Vector<ULong>& ReactionTracker, SimulationData& simdata) {
     
-    // Random number generator
-    // std::seed_seq seed{simdata.generator()};
+    // Read simulation parameters from simdata
     std::mt19937_64 generator = simdata.generator;
     std::uniform_real_distribution<Real> distribution = simdata.distribution;
-
-    // Initialize the Reaction
     Real t = simdata.save_point;
     Real Volume = simdata.Volume;
     Real runtime = simdata.runtime;
     ULong i_max = simdata.i_max;
     ULong iteration = simdata.iteration;
+
+    // Precompute reaction schema for the initial state
+    size_t M = Reactions.size();
+    Vector<Real> amu(M);
+    Real a0;
+    Compute_Reaction_Schema(amu, a0, Volume, ReactantQuantity, Reactions, ReactionRates);
 
     
     Real tau, r1, r2;
@@ -76,10 +79,11 @@ void ReactionLoop (Vector<ULong>& ReactantQuantity, Vector<Real> amu, Real a0, c
         tau =  std::log(1/r1) / a0;
         auto mu0 = std::upper_bound(amu.begin(), amu.end(), r2);
         mu = std::distance(amu.begin(), mu0);
+        if (mu >= M) { mu = M - 1; }; // Handle edge case where r2 is very close to 1, which can cause mu to be out of bounds
 
         // Performing reaction
         FacilitateReaction(ReactantQuantity, Reactions[mu]);
-        ReactionTracker[mu]++; // Track the reaction count for this reaction path
+        // ReactionTracker[mu]++; // Track the reaction count for this reaction path
         Compute_Reaction_Schema(amu, a0, Volume, ReactantQuantity, Reactions, ReactionRates);
 
         // Advancing time

@@ -324,7 +324,7 @@ int main(int argc, char *argv[])
     reaction_counts.open("reaction_counts.csv");
     for (int i = 0; i < M; i++)
     {
-        reaction_counts << i << ",";
+        reaction_counts << i << "," << " " << ",";
     }
     reaction_counts << "\n";
 
@@ -345,7 +345,7 @@ int main(int argc, char *argv[])
     for (int i = 0; i < n_saves + 1; i++)
     {
         Print() << "Running iteration " << i + 1 << " from t = " << simdata[0].save_point << " to " << simdata[0].runtime << std::endl;
-        ParallelReactionLoop(ReactantMatrix, amu, a0, Reactions, ReactionRates, ReactionCountMatrix, simdata, num_workers);
+        ParallelReactionLoop(ReactantMatrix, Reactions, ReactionRates, ReactionCountMatrix, simdata, num_workers);
 
         // Scale results by the number of iterations.
         for (int j = 0; j < niter; j++)
@@ -353,9 +353,9 @@ int main(int argc, char *argv[])
             ReactionMass = n_amb > 0 ? n_amb * Volume * 1e-6 : std::accumulate(ReactantMatrix[j].begin(), ReactantMatrix[j].end(), 0.0); // Recalculate total particle count for current iteration, accounting for ambient species if specified
             OutputVector[0] += simdata[j].a0 * inverse_iter_count;
             OutputVector[1] += ReactionMass * inverse_iter_count;
-            for (int k = 2; k < N + 2; k++)
+            for (int k = 0; k < N; k++)
             {
-                OutputVector[k] += ReactantMatrix[j][k] * inverse_iter_count;
+                OutputVector[k+2] += ReactantMatrix[j][k] * inverse_iter_count;
             }
             for (int k = 0; k < M; k++)
             {
@@ -369,9 +369,9 @@ int main(int argc, char *argv[])
             ReactionMass = n_amb > 0 ? n_amb * Volume * 1e-6 : std::accumulate(ReactantMatrix[j].begin(), ReactantMatrix[j].end(), 0.0);
             ErrorVector[0] += std::pow(simdata[j].a0 - OutputVector[0], 2) * inverse_iter_count;
             ErrorVector[1] += std::pow(ReactionMass - OutputVector[1], 2) * inverse_iter_count;
-            for (int k = 2; k < N + 2; k++)
+            for (int k = 0; k < N; k++)
             {
-                ErrorVector[k] += std::pow(ReactantMatrix[j][k] - OutputVector[k], 2) * inverse_iter_count;
+                ErrorVector[k+2] += std::pow(ReactantMatrix[j][k] - OutputVector[k+2], 2) * inverse_iter_count;
             }
             for (int k = 0; k < M; k++)
             {

@@ -106,7 +106,7 @@ void FacilitateReaction(Vector<ULong>& ReactantQuantity, const Vector<int>& reac
     AMREX_ASSERT_WITH_MESSAGE(reaction.size() == 2*N, "ERROR: Size mismatch in reaction");
 
     for (int i = 0; i < N; i++) {
-        ReactantQuantity[i] += reaction[N+i] - reaction[i];
+        ReactantQuantity[i] += static_cast<ULong>(reaction[N+i]) - static_cast<ULong>(reaction[i]);
     }
 }
 

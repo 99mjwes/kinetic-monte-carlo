@@ -86,10 +86,10 @@ void ReactionPrint(const Vector<int>& reaction, const Vector<std::string>& React
 
 void check_unique_reations(const Vector<Vector<int>>& Reactions);
 
-void ReactionLoop (Vector<ULong>& ReactantQuantity, Vector<Real> amu, Real a0, const Vector<Vector<int>>& Reactions, const Vector<Real>& ReactionRates, Vector<ULong>& ReactionTracker, SimulationData& simdata);
+void ReactionLoop (Vector<ULong>& ReactantQuantity, const Vector<Vector<int>>& Reactions, const Vector<Real>& ReactionRates, Vector<ULong>& ReactionTracker, SimulationData& simdata);
 
-void SerialReactionLoop(Vector<Vector<ULong>>& ReactantQuantity, Vector<Real> amu, Real a0, const Vector<Vector<int>>& Reactions, const Vector<Real>& ReactionRates, Vector<Vector<ULong>>& ReactionTracker, Vector<SimulationData>& simdata, ULong start, ULong end);
+void SerialReactionLoop(Vector<Vector<ULong>>& ReactantQuantity, const Vector<Vector<int>>& Reactions, const Vector<Real>& ReactionRates, Vector<Vector<ULong>>& ReactionTracker, Vector<SimulationData>& simdata, ULong start, ULong end);
 
-void ParallelReactionLoop(Vector<Vector<ULong>>& ReactantQuantity, Vector<Real> amu, Real a0, const Vector<Vector<int>>& Reactions, const Vector<Real>& ReactionRates, Vector<Vector<ULong>>& ReactionTracker, Vector<SimulationData>& simdata, ULong num_workers);
+void ParallelReactionLoop(Vector<Vector<ULong>>& ReactantQuantity, const Vector<Vector<int>>& Reactions, const Vector<Real>& ReactionRates, Vector<Vector<ULong>>& ReactionTracker, Vector<SimulationData>& simdata, ULong num_workers);
 
 #endif
