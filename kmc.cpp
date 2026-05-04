@@ -11,9 +11,9 @@
 
 using namespace amrex;
 
-Real power(unsigned long base, int exponent) {
+Real power(ULong base, int exponent) {
     // if (exponent == 0) {return 1.0;}      // x^0 = 1, special case 0^0 = 1!!
-    // if (base < static_cast<unsigned long>(exponent)) {return 0.0;}    // x*(x-1)*(x-2)*...*0*... = 0
+    // if (base < static_cast<ULong>(exponent)) {return 0.0;}    // x*(x-1)*(x-2)*...*0*... = 0
     Real p = 1.0;
     for (int i = 0; i < exponent; i++) {
         p *= static_cast<Real>(base - i);
@@ -32,7 +32,7 @@ Real power(unsigned long base, int exponent) {
 // }
 
 
-void Compute_Reaction_Schema( Vector<Real>& ReactionSchema, Real& SchemaSum, const Real Volume, const Vector<unsigned long>& ReactantQuantity, const Vector<Vector<int>>& Reactions, const Vector<Real>& ReactionRates)
+void Compute_Reaction_Schema( Vector<Real>& ReactionSchema, Real& SchemaSum, const Real Volume, const Vector<ULong>& ReactantQuantity, const Vector<Vector<int>>& Reactions, const Vector<Real>& ReactionRates)
 {
     int N = ReactantQuantity.size();
     int M = Reactions.size();
@@ -100,7 +100,7 @@ void Compute_Reaction_Schema( Vector<Real>& ReactionSchema, Real& SchemaSum, con
 }
 
 
-void FacilitateReaction(Vector<unsigned long>& ReactantQuantity, const Vector<int>& reaction){
+void FacilitateReaction(Vector<ULong>& ReactantQuantity, const Vector<int>& reaction){
     int N = ReactantQuantity.size();
 
     AMREX_ASSERT_WITH_MESSAGE(reaction.size() == 2*N, "ERROR: Size mismatch in reaction");
@@ -131,7 +131,7 @@ void interpret_line(std::string Header, Vector<std::string>& content, char delim
 
 }
 
-int LoadData(std::string filename, Vector<std::string>& ReactantNames, Vector<unsigned long>& ReactantQuantity, Vector<Vector<int>>& Reactions, Vector<ParserExecutor <4>>& ReactionRateExecutors, Vector<Parser>& ReactionRateParsers) {
+int LoadData(std::string filename, Vector<std::string>& ReactantNames, Vector<ULong>& ReactantQuantity, Vector<Vector<int>>& Reactions, Vector<ParserExecutor <4>>& ReactionRateExecutors, Vector<Parser>& ReactionRateParsers) {
 
     std::ifstream Data;
     char delimiter = '\t';
@@ -180,7 +180,7 @@ int LoadData(std::string filename, Vector<std::string>& ReactantNames, Vector<un
     }
 
     for (int i = n_params; i < n_params + N; i++) {
-        ReactantQuantity.push_back(static_cast<unsigned long>( std::atof(Entries[i].c_str())) );
+        ReactantQuantity.push_back(static_cast<ULong>( std::atof(Entries[i].c_str())) );
     }
    
     Vector<int> reaction (2*N);

@@ -2,6 +2,7 @@
 #define KMC_H_
 
 #include <AMReX.H>
+#include <random>
 
 using namespace amrex;
 
@@ -56,26 +57,39 @@ T VectorSum(const std::vector<T>& vec, uint skip = 0) {
 }
 
 
-Real power(unsigned long base, int exponent);
+struct SimulationData {
+    Real Volume;
+    Real runtime;
+    Real save_point;
+    Real last_point;
+    Real a0;
+    std::uniform_real_distribution<Real> distribution;
+    std::mt19937_64 generator;
+    ULong iteration;
+    ULong i_max;
+};
+
+
+Real power(ULong base, int exponent);
 
 // Real randnum();
 
-void Compute_Reaction_Schema( Vector<Real>& ReactionSchema, Real& SchemaSum, const Real Volume, const Vector<unsigned long>& ReactantQuantity, const Vector<Vector<int>>& Reactions, const Vector<Real>& ReactionRates);
+void Compute_Reaction_Schema( Vector<Real>& ReactionSchema, Real& SchemaSum, const Real Volume, const Vector<ULong>& ReactantQuantity, const Vector<Vector<int>>& Reactions, const Vector<Real>& ReactionRates);
 
-void FacilitateReaction(Vector<unsigned long>& ReactantQuantity, const Vector<int>& reaction);
+void FacilitateReaction(Vector<ULong>& ReactantQuantity, const Vector<int>& reaction);
 
 void interpret_line(std::string Header, Vector<std::string>& content, char delimiter);
 
-int LoadData(std::string filename, Vector<std::string>& ReactantNames,  Vector<unsigned long>& ReactantQuantity, Vector<Vector<int>>& Reactions, Vector<ParserExecutor <4>>& ReactionRateExecutors, Vector<Parser>& ReactionRateParsers);
+int LoadData(std::string filename, Vector<std::string>& ReactantNames,  Vector<ULong>& ReactantQuantity, Vector<Vector<int>>& Reactions, Vector<ParserExecutor <4>>& ReactionRateExecutors, Vector<Parser>& ReactionRateParsers);
 
 void ReactionPrint(const Vector<int>& reaction, const Vector<std::string>& ReactantNames, Real ReactionRate);
 
 void check_unique_reations(const Vector<Vector<int>>& Reactions);
 
-void ReactionLoop (Vector<Vector<Real>>& ResultMatrix, Vector<unsigned long> ReactantQuantity, Vector<Real> amu, Real a0, const Vector<Vector<int>>& Reactions, const Vector<Real>& ReactionRates, const Real Volume, Real save_point, const Real runtime, const Real save_step, unsigned int init_seed, unsigned long i_max);
+void ReactionLoop (Vector<ULong>& ReactantQuantity, Vector<Real> amu, Real a0, const Vector<Vector<int>>& Reactions, const Vector<Real>& ReactionRates, Vector<ULong>& ReactionTracker, SimulationData& simdata);
 
-void SerialReactionLoop(Vector<Vector<Vector<Real>>>& ResultTensor, Vector<unsigned long> ReactantQuantity, Vector<Real> amu, Real a0, const Vector<Vector<int>>& Reactions, const Vector<Real>& ReactionRates, const Real Volume, Real save_point, const Real runtime, const Real save_step, unsigned int init_seed, unsigned long i_max, unsigned long start, unsigned long end);
+void SerialReactionLoop(Vector<Vector<ULong>>& ReactantQuantity, Vector<Real> amu, Real a0, const Vector<Vector<int>>& Reactions, const Vector<Real>& ReactionRates, Vector<Vector<ULong>>& ReactionTracker, Vector<SimulationData>& simdata, ULong start, ULong end);
 
-void ParallelReactionLoop(Vector<Vector<Vector<Real>>>& ResultTensor, Vector<unsigned long> ReactantQuantity, Vector<Real> amu, Real a0, const Vector<Vector<int>>& Reactions, const Vector<Real>& ReactionRates, const Real Volume, Real save_point, const Real runtime, const Real save_step, unsigned int init_seed, unsigned long i_max, unsigned long num_workers);
+void ParallelReactionLoop(Vector<Vector<ULong>>& ReactantQuantity, Vector<Real> amu, Real a0, const Vector<Vector<int>>& Reactions, const Vector<Real>& ReactionRates, Vector<Vector<ULong>>& ReactionTracker, Vector<SimulationData>& simdata, ULong num_workers);
 
 #endif
