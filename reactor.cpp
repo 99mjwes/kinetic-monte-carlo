@@ -56,8 +56,10 @@ void ReactionLoop (Vector<ULong>& ReactantQuantity, const Vector<Vector<int>>& R
     // Precompute reaction schema for the initial state
     size_t M = Reactions.size();
     Vector<Real> amu(M);
+    Vector<Real> BaseSchema(M);
+    Vector<Real> CummulativeSchema(M);
     Real a0;
-    Compute_Reaction_Schema(amu, a0, Volume, ReactantQuantity, Reactions, ReactionRates);
+    Compute_Reaction_Schema(amu, a0, Volume, ReactantQuantity, Reactions, ReactionRates, BaseSchema, CummulativeSchema); // Reusing amu and cummulative schema vectors to save memory allocations
 
     
     Real tau, r1, r2;
@@ -83,8 +85,8 @@ void ReactionLoop (Vector<ULong>& ReactantQuantity, const Vector<Vector<int>>& R
 
         // Performing reaction
         FacilitateReaction(ReactantQuantity, Reactions[mu]);
-        // ReactionTracker[mu]++; // Track the reaction count for this reaction path
-        Compute_Reaction_Schema(amu, a0, Volume, ReactantQuantity, Reactions, ReactionRates);
+        ReactionTracker[mu]++; // Track the reaction count for this reaction path
+        Compute_Reaction_Schema(amu, a0, Volume, ReactantQuantity, Reactions, ReactionRates, BaseSchema, CummulativeSchema); // Reusing amu and cummulative schema vectors to save memory allocations
 
         // Advancing time
         iteration++;

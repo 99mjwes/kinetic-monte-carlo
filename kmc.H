@@ -74,7 +74,7 @@ Real power(ULong base, int exponent);
 
 // Real randnum();
 
-void Compute_Reaction_Schema( Vector<Real>& ReactionSchema, Real& SchemaSum, const Real Volume, const Vector<ULong>& ReactantQuantity, const Vector<Vector<int>>& Reactions, const Vector<Real>& ReactionRates);
+void Compute_Reaction_Schema( Vector<Real>& ReactionSchema, Real& SchemaSum, const Real Volume, const Vector<ULong>& ReactantQuantity, const Vector<Vector<int>>& Reactions, const Vector<Real>& ReactionRates, Vector<Real>& BaseSchema, Vector<Real>& CummulativeSchema);
 
 void FacilitateReaction(Vector<ULong>& ReactantQuantity, const Vector<int>& reaction);
 

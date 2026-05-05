@@ -11,15 +11,39 @@
 
 using namespace amrex;
 
-Real power(ULong base, int exponent) {
+inline Real power(ULong base, int exponent) {
     // if (exponent == 0) {return 1.0;}      // x^0 = 1, special case 0^0 = 1!!
     // if (base < static_cast<ULong>(exponent)) {return 0.0;}    // x*(x-1)*(x-2)*...*0*... = 0
-    Real p = 1.0;
-    for (int i = 0; i < exponent; i++) {
-        p *= static_cast<Real>(base - i);
+    // Real p = 1.0;
+    // for (int i = 0; i < exponent; i++) {
+    //     p *= static_cast<Real>(base - i);
+    // }
+    // return p;
+
+    switch (exponent) {
+        case 0: 
+            return 1.0;
+            
+        case 1: 
+            return static_cast<Real>(base);
+            
+        case 2: 
+            // One subtraction, one multiplication, zero loop overhead
+            return static_cast<Real>(base) * static_cast<Real>(base - 1); 
+            
+        // case 3:
+        //     return static_cast<Real>(base) * static_cast<Real>(base - 1) * static_cast<Real>(base - 2);
+            
+        default:
+            // Fallback for extreme corner cases (exponent > 3)
+            Real p = 1.0;
+            for (int i = 0; i < exponent; i++) {
+                p *= static_cast<Real>(base - i);
+            }
+            return p;
     }
-    return p;
 }
+
 
 // Real randnum ()
 // {
@@ -32,18 +56,15 @@ Real power(ULong base, int exponent) {
 // }
 
 
-void Compute_Reaction_Schema( Vector<Real>& ReactionSchema, Real& SchemaSum, const Real Volume, const Vector<ULong>& ReactantQuantity, const Vector<Vector<int>>& Reactions, const Vector<Real>& ReactionRates)
+void Compute_Reaction_Schema( Vector<Real>& ReactionSchema, Real& SchemaSum, const Real Volume, const Vector<ULong>& ReactantQuantity, const Vector<Vector<int>>& Reactions, const Vector<Real>& ReactionRates, Vector<Real>& BaseSchema, Vector<Real>& CummulativeSchema)
 {
     int N = ReactantQuantity.size();
     int M = Reactions.size();
 
     AMREX_ASSERT_WITH_MESSAGE(Reactions[0].size() == 2*N, "ERROR: Vector mismatch in Reactions");
 
-    // Vector<int> reaction(N);
-    Vector<Real> BaseSchema(M);
-    Vector<Real> CummulativeSchema(M);
-
     int Reactant_sum;
+    int exponent;
     Real tracker;
     Real ssinv;
 
@@ -54,26 +75,36 @@ void Compute_Reaction_Schema( Vector<Real>& ReactionSchema, Real& SchemaSum, con
         Reactant_sum = VectorSum(Reactions[i], static_cast<uint>(N));
         AMREX_ASSERT_WITH_MESSAGE(Reactant_sum == Reactant_sum, "ERROR: NaN Reactant sum"); 
 
-        // Compute nested reactant products
-        // Unroll the loop for better performance
-        int j = 0;
-        for ( ; j + 3 < N; j += 4) {
-            tracker *= power(ReactantQuantity[j], Reactions[i][j]);
-            tracker *= power(ReactantQuantity[j + 1], Reactions[i][j + 1]);
-            tracker *= power(ReactantQuantity[j + 2], Reactions[i][j + 2]);
-            tracker *= power(ReactantQuantity[j + 3], Reactions[i][j + 3]);
+        for (int j = 0; j < N; j++) {
+            exponent = Reactions[i][j];
+            
+            // Species not involved. 
+            if (exponent == 0) continue; 
+            
+            // Not enough reactants.
+            if (ReactantQuantity[j] < static_cast<ULong>(exponent)) {
+                tracker = 0.0;
+                break; 
+            }
+
+            // 3. Compute the combinatorial factor for this reactant.
+            if (exponent == 1) {
+                tracker *= static_cast<Real>(ReactantQuantity[j]);
+            } else if (exponent == 2) {
+                tracker *= static_cast<Real>(ReactantQuantity[j]) * static_cast<Real>(ReactantQuantity[j] - 1);
+            } else {
+                // Fallback for exponent >= 3
+                for (int k = 0; k < exponent; k++) {
+                    tracker *= static_cast<Real>(ReactantQuantity[j] - k);
+                }
+            }
         }
-        
-        // Handle remaining elements if N is not a multiple of 4
-        for ( ; j < N; j++) {
-            tracker *= power(ReactantQuantity[j], Reactions[i][j]);
-            AMREX_ASSERT_WITH_MESSAGE(tracker == tracker, "ERROR: NaN Tracker");
-        }
 
 
 
-        BaseSchema[i] = tracker * ReactionRates[i] * std::pow(Volume, 1 - Reactant_sum);
-        AMREX_ASSERT_WITH_MESSAGE(BaseSchema[i] == BaseSchema[i], "ERROR: NaN Base Schema");
+        // BaseSchema[i] = tracker * ReactionRates[i] * std::pow(Volume, 1 - Reactant_sum);
+        BaseSchema[i] = tracker * ReactionRates[i];
+        AMREX_ASSERT_WITH_MESSAGE(!std::isnan(BaseSchema[i]), "ERROR: NaN Base Schema");
     }
 
     std::partial_sum(BaseSchema.begin(), BaseSchema.end(), CummulativeSchema.begin());
