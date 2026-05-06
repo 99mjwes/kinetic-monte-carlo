@@ -10,15 +10,15 @@
 
 using namespace amrex;
 
-void SerialReactionLoop(Vector<Vector<ULong>>& ReactantQuantity, const Vector<Vector<int>>& Reactions, const Vector<Real>& ReactionRates, Vector<Vector<ULong>>& ReactionTracker, Vector<SimulationData>& simdata, ULong start, ULong end) {
+void SerialReactionLoop(Vector<Vector<ULong>>& ReactantQuantity, const Vector<Vector<ActiveSpecies>>& SparseReactions, const Vector<Vector<ActiveSpecies>>& SparseStateChange, const Vector<Real>& ReactionRates, Vector<Vector<ULong>>& ReactionTracker, Vector<SimulationData>& simdata, ULong start, ULong end) {
 
     for (size_t i = start; i < end; i++ ) {
-        ReactionLoop (ReactantQuantity[i], Reactions, ReactionRates, ReactionTracker[i], simdata[i]);
+        ReactionLoop (ReactantQuantity[i], SparseReactions, SparseStateChange, ReactionRates, ReactionTracker[i], simdata[i]);
     }
 }
 
 
-void ParallelReactionLoop(Vector<Vector<ULong>>& ReactantQuantity, const Vector<Vector<int>>& Reactions, const Vector<Real>& ReactionRates, Vector<Vector<ULong>>& ReactionTracker, Vector<SimulationData>& simdata, ULong num_workers) {
+void ParallelReactionLoop(Vector<Vector<ULong>>& ReactantQuantity, const Vector<Vector<ActiveSpecies>>& SparseReactions, const Vector<Vector<ActiveSpecies>>& SparseStateChange, const Vector<Real>& ReactionRates, Vector<Vector<ULong>>& ReactionTracker, Vector<SimulationData>& simdata, ULong num_workers) {
     std::vector<std::thread> workers;
 
     size_t mod = ReactantQuantity.size() / num_workers;
@@ -29,7 +29,7 @@ void ParallelReactionLoop(Vector<Vector<ULong>>& ReactantQuantity, const Vector<
 
     for (size_t i = 0; i < num_workers; ++i) {
         end = start + mod + (i < rem);
-        workers.emplace_back(SerialReactionLoop, std::ref(ReactantQuantity), std::cref(Reactions), std::cref(ReactionRates), std::ref(ReactionTracker), std::ref(simdata), start, end);
+        workers.emplace_back(SerialReactionLoop, std::ref(ReactantQuantity), std::cref(SparseReactions), std::cref(SparseStateChange), std::cref(ReactionRates), std::ref(ReactionTracker), std::ref(simdata), start, end);
         // Print() << "Worker " << i << " will run sim " << start + 1 << " to " << end << std::endl;
         start = end;
     }
@@ -42,7 +42,7 @@ void ParallelReactionLoop(Vector<Vector<ULong>>& ReactantQuantity, const Vector<
 
 
 
-void ReactionLoop (Vector<ULong>& ReactantQuantity, const Vector<Vector<int>>& Reactions, const Vector<Real>& ReactionRates, Vector<ULong>& ReactionTracker, SimulationData& simdata) {
+void ReactionLoop (Vector<ULong>& ReactantQuantity, const Vector<Vector<ActiveSpecies>>& SparseReactions, const Vector<Vector<ActiveSpecies>>& SparseStateChange, const Vector<Real>& ReactionRates, Vector<ULong>& ReactionTracker, SimulationData& simdata) {
     
     // Read simulation parameters from simdata
     std::mt19937_64 generator = simdata.generator;
@@ -54,12 +54,12 @@ void ReactionLoop (Vector<ULong>& ReactantQuantity, const Vector<Vector<int>>& R
     ULong iteration = simdata.iteration;
 
     // Precompute reaction schema for the initial state
-    size_t M = Reactions.size();
+    size_t M = SparseReactions.size();
     Vector<Real> amu(M);
     Vector<Real> BaseSchema(M);
     Vector<Real> CummulativeSchema(M);
     Real a0;
-    Compute_Reaction_Schema(amu, a0, Volume, ReactantQuantity, Reactions, ReactionRates, BaseSchema, CummulativeSchema); // Reusing amu and cummulative schema vectors to save memory allocations
+    Compute_Reaction_Schema(amu, a0, Volume, ReactantQuantity, SparseReactions, ReactionRates, BaseSchema, CummulativeSchema); // Reusing amu and cummulative schema vectors to save memory allocations
 
     
     Real tau, r1, r2;
@@ -84,9 +84,9 @@ void ReactionLoop (Vector<ULong>& ReactantQuantity, const Vector<Vector<int>>& R
         if (mu >= M) { mu = M - 1; }; // Handle edge case where r2 is very close to 1, which can cause mu to be out of bounds
 
         // Performing reaction
-        FacilitateReaction(ReactantQuantity, Reactions[mu]);
+        FacilitateReaction(ReactantQuantity, SparseStateChange[mu]);
         ReactionTracker[mu]++; // Track the reaction count for this reaction path
-        Compute_Reaction_Schema(amu, a0, Volume, ReactantQuantity, Reactions, ReactionRates, BaseSchema, CummulativeSchema); // Reusing amu and cummulative schema vectors to save memory allocations
+        Compute_Reaction_Schema(amu, a0, Volume, ReactantQuantity, SparseReactions, ReactionRates, BaseSchema, CummulativeSchema); // Reusing amu and cummulative schema vectors to save memory allocations
 
         // Advancing time
         iteration++;

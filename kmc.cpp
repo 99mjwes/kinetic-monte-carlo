@@ -56,7 +56,7 @@ inline Real power(ULong base, int exponent) {
 // }
 
 
-void Compute_Reaction_Schema( Vector<Real>& ReactionSchema, Real& SchemaSum, const Real Volume, const Vector<ULong>& ReactantQuantity, const Vector<Vector<int>>& Reactions, const Vector<Real>& ReactionRates, Vector<Real>& BaseSchema, Vector<Real>& CummulativeSchema)
+void Compute_Reaction_Schema( Vector<Real>& ReactionSchema, Real& SchemaSum, const Real Volume, const Vector<ULong>& ReactantQuantity, const Vector<Vector<ActiveSpecies>>& Reactions, const Vector<Real>& ReactionRates, Vector<Real>& BaseSchema, Vector<Real>& CummulativeSchema)
 {
     int N = ReactantQuantity.size();
     int M = Reactions.size();
@@ -64,7 +64,7 @@ void Compute_Reaction_Schema( Vector<Real>& ReactionSchema, Real& SchemaSum, con
     AMREX_ASSERT_WITH_MESSAGE(Reactions[0].size() == 2*N, "ERROR: Vector mismatch in Reactions");
 
     int Reactant_sum;
-    int exponent;
+    int exponent, idx;
     Real tracker;
     Real ssinv;
 
@@ -72,30 +72,37 @@ void Compute_Reaction_Schema( Vector<Real>& ReactionSchema, Real& SchemaSum, con
     for (int i = 0; i < M; i++) {
         tracker = 1;
 
-        Reactant_sum = VectorSum(Reactions[i], static_cast<uint>(N));
-        AMREX_ASSERT_WITH_MESSAGE(Reactant_sum == Reactant_sum, "ERROR: NaN Reactant sum"); 
+        //Reactant_sum = 0;
+        //VectorSum(Reactions[i], static_cast<uint>(N));
+        // for (const auto& reactant : Reactions[i]) {
+        //     Reactant_sum += reactant.count;
+        // }
+        //AMREX_ASSERT_WITH_MESSAGE(Reactant_sum == Reactant_sum, "ERROR: NaN Reactant sum"); 
 
-        for (int j = 0; j < N; j++) {
-            exponent = Reactions[i][j];
-            
-            // Species not involved. 
-            if (exponent == 0) continue; 
+        for (const auto& reactant : Reactions[i]) {
+            idx = reactant.index;
+            exponent = reactant.count;
+
+            // Reactant_sum += exponent;
+
+            // // Species not involved. 
+            // if (exponent == 0) continue; 
             
             // Not enough reactants.
-            if (ReactantQuantity[j] < static_cast<ULong>(exponent)) {
+            if (ReactantQuantity[idx] < static_cast<ULong>(exponent)) {
                 tracker = 0.0;
                 break; 
             }
 
             // 3. Compute the combinatorial factor for this reactant.
             if (exponent == 1) {
-                tracker *= static_cast<Real>(ReactantQuantity[j]);
+                tracker *= static_cast<Real>(ReactantQuantity[idx]);
             } else if (exponent == 2) {
-                tracker *= static_cast<Real>(ReactantQuantity[j]) * static_cast<Real>(ReactantQuantity[j] - 1);
+                tracker *= static_cast<Real>(ReactantQuantity[idx]) * static_cast<Real>(ReactantQuantity[idx] - 1);
             } else {
                 // Fallback for exponent >= 3
                 for (int k = 0; k < exponent; k++) {
-                    tracker *= static_cast<Real>(ReactantQuantity[j] - k);
+                    tracker *= static_cast<Real>(ReactantQuantity[idx] - k);
                 }
             }
         }
@@ -131,13 +138,18 @@ void Compute_Reaction_Schema( Vector<Real>& ReactionSchema, Real& SchemaSum, con
 }
 
 
-void FacilitateReaction(Vector<ULong>& ReactantQuantity, const Vector<int>& reaction){
+void FacilitateReaction(Vector<ULong>& ReactantQuantity, const Vector<ActiveSpecies>& StateChange) {
     int N = ReactantQuantity.size();
 
-    AMREX_ASSERT_WITH_MESSAGE(reaction.size() == 2*N, "ERROR: Size mismatch in reaction");
+    // AMREX_ASSERT_WITH_MESSAGE(StateChange.size() == 2*N, "ERROR: Size mismatch in StateChange");
 
-    for (int i = 0; i < N; i++) {
-        ReactantQuantity[i] += static_cast<ULong>(reaction[N+i]) - static_cast<ULong>(reaction[i]);
+    for (const auto& change : StateChange) {
+        if (change.count > 0) {
+            ReactantQuantity[change.index] += static_cast<ULong>(change.count);
+        } else {
+            ReactantQuantity[change.index] -= static_cast<ULong>(-change.count);
+        }
+        
     }
 }
 

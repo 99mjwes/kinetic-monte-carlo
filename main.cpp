@@ -282,6 +282,32 @@ int main(int argc, char *argv[])
     Vector<Vector<ULong>> ReactantMatrix(niter, ReactantQuantity);         // Tensor of size niter x N to track the quantity of each reactant at each save point in each iteration
 
     Vector<Real> amu(M);
+    // Define these alongside your other global/precomputed variables
+    Vector<Vector<ActiveSpecies>> SparseReactions(M);
+    Vector<Vector<ActiveSpecies>> SparseStateChange(M);
+
+    // Convert Dense to Sparse (Run this ONCE before the parallel workers start)
+    int reactant_exponent;
+    int product_exponent;
+    int net_change;
+    for (int i = 0; i < M; i++) {
+        for (int j = 0; j < N; j++) {
+            reactant_exponent = Reactions[i][j];          // Left side of equation
+            product_exponent  = Reactions[i][j + N];      // Right side of equation
+            
+            // 1. Populate Sparse Reactants (only if it is > 0)
+            if (reactant_exponent > 0) {
+                SparseReactions[i].push_back({j, reactant_exponent});
+            }
+            
+            // 2. Populate Net State Change (Products - Reactants)
+            net_change = product_exponent - reactant_exponent;
+            if (net_change != 0) {
+                SparseStateChange[i].push_back({j, net_change});
+            }
+        }
+    }
+
 
 
 
@@ -289,14 +315,17 @@ int main(int argc, char *argv[])
     Real a0 = 1.0;
     Vector<Real> dummy1(M);
     Vector<Real> dummy2(M);
-    Compute_Reaction_Schema(amu, a0, Volume, ReactantQuantity, Reactions, ReactionRates, dummy1, dummy2); // Reusing amu and cummulative schema vectors to save memory allocations
+    Compute_Reaction_Schema(amu, a0, Volume, ReactantQuantity, SparseReactions, ReactionRates, dummy1, dummy2); // Reusing amu and cummulative schema vectors to save memory allocations
     dummy1.clear();
     dummy2.clear();
     Print() << "a0 initial: " << a0 << std::endl;
     // Precompute this ONCE before the parallel loop
     Vector<Real> EffectiveRates(M);
     for (int i = 0; i < M; i++) {
-        int Reactant_sum = VectorSum(Reactions[i], N);
+        int Reactant_sum = 0; //VectorSum(Reactions[i], N); -- Replaced with loop to avoid summing over non-reactants in sparse representation
+        for (const auto& reactant : SparseReactions[i]) {
+            Reactant_sum += reactant.count;
+        }
         EffectiveRates[i] = ReactionRates[i] * std::pow(Volume, 1 - Reactant_sum);
     }
 
@@ -358,7 +387,7 @@ int main(int argc, char *argv[])
     for (int i = 0; i < n_saves + 1; i++)
     {
         Print() << "Running iteration " << i + 1 << " from t = " << simdata[0].save_point << " to " << simdata[0].runtime << std::endl;
-        ParallelReactionLoop(ReactantMatrix, Reactions, EffectiveRates, ReactionCountMatrix, simdata, num_workers);
+        ParallelReactionLoop(ReactantMatrix, SparseReactions, SparseStateChange, EffectiveRates, ReactionCountMatrix, simdata, num_workers);
 
         // Scale results by the number of iterations.
         for (int j = 0; j < niter; j++)

@@ -69,14 +69,19 @@ struct SimulationData {
     ULong i_max;
 };
 
+struct ActiveSpecies {
+    int index;
+    int count; 
+};
+
 
 Real power(ULong base, int exponent);
 
 // Real randnum();
 
-void Compute_Reaction_Schema( Vector<Real>& ReactionSchema, Real& SchemaSum, const Real Volume, const Vector<ULong>& ReactantQuantity, const Vector<Vector<int>>& Reactions, const Vector<Real>& ReactionRates, Vector<Real>& BaseSchema, Vector<Real>& CummulativeSchema);
+void Compute_Reaction_Schema( Vector<Real>& ReactionSchema, Real& SchemaSum, const Real Volume, const Vector<ULong>& ReactantQuantity, const Vector<Vector<ActiveSpecies>>& Reactions, const Vector<Real>& ReactionRates, Vector<Real>& BaseSchema, Vector<Real>& CummulativeSchema);
 
-void FacilitateReaction(Vector<ULong>& ReactantQuantity, const Vector<int>& reaction);
+void FacilitateReaction(Vector<ULong>& ReactantQuantity, const Vector<ActiveSpecies>& reaction);
 
 void interpret_line(std::string Header, Vector<std::string>& content, char delimiter);
 
@@ -86,10 +91,10 @@ void ReactionPrint(const Vector<int>& reaction, const Vector<std::string>& React
 
 void check_unique_reations(const Vector<Vector<int>>& Reactions);
 
-void ReactionLoop (Vector<ULong>& ReactantQuantity, const Vector<Vector<int>>& Reactions, const Vector<Real>& ReactionRates, Vector<ULong>& ReactionTracker, SimulationData& simdata);
+void ReactionLoop (Vector<ULong>& ReactantQuantity, const Vector<Vector<ActiveSpecies>>& SparseReactions, const Vector<Vector<ActiveSpecies>>& SparseStateChange, const Vector<Real>& ReactionRates, Vector<ULong>& ReactionTracker, SimulationData& simdata);
 
-void SerialReactionLoop(Vector<Vector<ULong>>& ReactantQuantity, const Vector<Vector<int>>& Reactions, const Vector<Real>& ReactionRates, Vector<Vector<ULong>>& ReactionTracker, Vector<SimulationData>& simdata, ULong start, ULong end);
+void SerialReactionLoop(Vector<Vector<ULong>>& ReactantQuantity, const Vector<Vector<ActiveSpecies>>& SparseReactions, const Vector<Vector<ActiveSpecies>>& SparseStateChange, const Vector<Real>& ReactionRates, Vector<Vector<ULong>>& ReactionTracker, Vector<SimulationData>& simdata, ULong start, ULong end);
 
-void ParallelReactionLoop(Vector<Vector<ULong>>& ReactantQuantity, const Vector<Vector<int>>& Reactions, const Vector<Real>& ReactionRates, Vector<Vector<ULong>>& ReactionTracker, Vector<SimulationData>& simdata, ULong num_workers);
+void ParallelReactionLoop(Vector<Vector<ULong>>& ReactantQuantity, const Vector<Vector<ActiveSpecies>>& SparseReactions, const Vector<Vector<ActiveSpecies>>& SparseStateChange, const Vector<Real>& ReactionRates, Vector<Vector<ULong>>& ReactionTracker, Vector<SimulationData>& simdata, ULong num_workers);
 
 #endif
