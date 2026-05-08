@@ -12,7 +12,7 @@
 
 using namespace amrex;
 
-void ReactionPrint(const Vector<int> &reaction, const Vector<std::string> &ReactantNames, Real ReactionRate)
+void ReactionPrint(const Vector<int> &reaction, const Vector<std::string> &ReactantNames, Real ReactionRate, std::ofstream &reaction_counts)
 {
 
     int M = reaction.size();
@@ -60,6 +60,10 @@ void ReactionPrint(const Vector<int> &reaction, const Vector<std::string> &React
     }
 
     Print() << input.str() << " -->" << output.str() << "  (" << ReactionRate << ")" << std::endl;
+    if (reaction_counts.is_open())
+    {
+        reaction_counts << input.str() << " -->" << output.str() << " ,";
+    }
 }
 
 int main(int argc, char *argv[])
@@ -186,11 +190,15 @@ int main(int argc, char *argv[])
     Vector<ULong>(N, 0);
     VectorPrint(ReactantQuantity);
 
+    std::ofstream reaction_counts;
+    reaction_counts.open("reaction_counts.csv");
+
     for (int i = 0; i < Reactions.size(); i++)
     {
         Print() << "Reaction R" << i + 1 << ": ";
-        ReactionPrint(Reactions[i], ReactantNames, ReactionRates[i]);
+        ReactionPrint(Reactions[i], ReactantNames, ReactionRates[i], reaction_counts);
     }
+    reaction_counts << "\n";
 
     ne *= 1e-6; // Convert to cm^-3
     Real Volume;
@@ -351,7 +359,6 @@ int main(int argc, char *argv[])
     }
 
     std::ofstream results;
-    std::ofstream reaction_counts;
     results.open(savename);
     results << "i,t,a0,,N,";
     for (int k = 0; k < N; k++)
@@ -363,12 +370,12 @@ int main(int argc, char *argv[])
     }
     results << "\n";
 
-    reaction_counts.open("reaction_counts.csv");
-    for (int i = 0; i < M; i++)
-    {
-        reaction_counts << i << "," << " " << ",";
-    }
-    reaction_counts << "\n";
+    // // reaction_counts.open("reaction_counts.csv");
+    // for (int i = 0; i < M; i++)
+    // {
+    //     reaction_counts << i << "," << " " << ",";
+    // }
+    // reaction_counts << "\n";
 
 
     Real inverse_iter_count = 1.0 / niter; // Scale factor for averaging across iterations
