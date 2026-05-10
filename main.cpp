@@ -62,7 +62,7 @@ void ReactionPrint(const Vector<int> &reaction, const Vector<std::string> &React
     Print() << input.str() << " -->" << output.str() << "  (" << ReactionRate << ")" << std::endl;
     if (reaction_counts.is_open())
     {
-        reaction_counts << input.str() << " -->" << output.str() << " ,";
+        reaction_counts << input.str() << " -->" << output.str() << " , , ";
     }
 }
 
