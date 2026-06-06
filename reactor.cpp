@@ -68,7 +68,7 @@ void ReactionLoop (Vector<ULong>& ReactantQuantity, const Vector<Vector<ActiveSp
     // Main Reaction Loop
     while (t < runtime) {
 
-        if ((a0 * runtime * 100.0) < 1.0) {
+        if ((a0 * (runtime - t) * 100.0) < 1.0) {
             break;
         }
 
@@ -79,6 +79,7 @@ void ReactionLoop (Vector<ULong>& ReactantQuantity, const Vector<Vector<ActiveSp
 
         // generating tau and mu
         tau =  std::log(1/r1) / a0;
+        if (t + tau > runtime) { break; } // Check if the next reaction would exceed the runtime, if so, exit the loop
         auto mu0 = std::upper_bound(amu.begin(), amu.end(), r2);
         mu = std::distance(amu.begin(), mu0);
         if (mu >= M) { mu = M - 1; }; // Handle edge case where r2 is very close to 1, which can cause mu to be out of bounds
@@ -110,10 +111,10 @@ void ReactionLoop (Vector<ULong>& ReactantQuantity, const Vector<Vector<ActiveSp
     }
 
     // Update simdata
-    simdata.save_point = t;
-    simdata.last_point = t - tau;
-    simdata.a0 = a0;
-    simdata.iteration = iteration;
+    simdata.save_point = runtime;   // Set save point to runtime to indicate completion
+    simdata.last_point = t;         // Record the actual final time reached in the simulation
+    simdata.a0 = a0;                // Record the final a0 value
+    simdata.iteration = iteration;  // Record the final iteration count
 
     // Post-simlation save
     // if (ii >= i_max) { // if the simulation reached the maximum number of iterations
